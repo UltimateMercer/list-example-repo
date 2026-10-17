@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, Trash2, Check } from "lucide-react";
+import { Plus, Search, Trash2, Layers, List, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SeriesFicha, ItemFicha, StackView } from "@/components/fichas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -56,6 +57,10 @@ function Index() {
   const [tab, setTab] = useState("series");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"stack" | "list">("stack");
+  const [idx, setIdx] = useState({ series: 0, items: 0 });
+  const [indexOpen, setIndexOpen] = useState(false);
+  const [indexQ, setIndexQ] = useState("");
 
   const query = q.trim().toLowerCase();
   const series = useMemo(
@@ -71,18 +76,34 @@ function Index() {
   const updateSeries = (id: string, patch: Partial<Series>) =>
     setData((d) => ({ ...d, series: d.series.map((s) => (s.id === id ? { ...s, ...patch } : s)) }));
 
+  const removeItem = (id: string) => setData((d) => ({ ...d, items: d.items.filter((x) => x.id !== id) }));
+  const jump = (t: "series" | "items", idx: number) => {
+    setQ("");
+    setTab(t);
+    setMode("stack");
+    setIdx((p) => ({ ...p, [t]: idx }));
+    setIndexOpen(false);
+  };
+  const iq = indexQ.trim().toLowerCase();
+
   return (
-    <div className="mx-auto min-h-screen max-w-xl bg-background px-4 pb-24 pt-4">
-      <header className="sticky top-0 z-10 -mx-4 bg-background px-4 pb-3 pt-2">
-        <h1 className="mb-3 text-2xl font-bold">Faltantes</h1>
+    <div className="mx-auto min-h-screen max-w-xl px-4 pb-24 pt-4">
+      <header className="sticky top-0 z-30 -mx-4 bg-background/95 px-4 pb-3 pt-2 backdrop-blur">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h1 className="font-display text-2xl font-bold tracking-tight">Faltantes</h1>
+          <div className="flex items-center gap-1">
+            <ToggleGroup type="single" variant="outline" size="sm" value={mode} onValueChange={(v) => v && setMode(v as "stack" | "list")}>
+              <ToggleGroupItem value="stack" aria-label="Fichas empilhadas"><Layers className="h-4 w-4" /></ToggleGroupItem>
+              <ToggleGroupItem value="list" aria-label="Lista contínua"><List className="h-4 w-4" /></ToggleGroupItem>
+            </ToggleGroup>
+            <Button variant="outline" size="sm" onClick={() => setIndexOpen(true)} aria-label="Índice">
+              <BookOpen className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar título..."
-            className="h-11 pl-9 text-base"
-          />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar título..." className="h-11 bg-card pl-9 text-base" />
         </div>
       </header>
 
@@ -92,55 +113,50 @@ function Index() {
           <TabsTrigger value="items">Avulsos ({data.items.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="series" className="mt-3 space-y-2">
+        <TabsContent value="series" className="mt-3 space-y-3">
           {series.length === 0 && <Empty text="Nenhuma série. Toque em + para adicionar." />}
-          {series.map((s) => (
-            <Card key={s.id} className="cursor-pointer p-4" onClick={() => setOpenId(s.id)}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold">{s.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {s.category} · {s.total} volumes
-                  </p>
-                </div>
-                <Badge variant={s.missing.length ? "destructive" : "secondary"}>
-                  {s.missing.length ? `faltam ${s.missing.length}` : "completa"}
-                </Badge>
-              </div>
-              {s.missing.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {s.missing.map((v) => (
-                    <Badge key={v} variant="outline">#{v}</Badge>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))}
+          {mode === "stack" ? (
+            <StackView cards={series} index={Math.min(idx.series, Math.max(0, series.length - 1))} setIndex={(n) => setIdx((p) => ({ ...p, series: n }))}
+              render={(s) => <SeriesFicha big s={s} onOpen={() => setOpenId(s.id)} />} />
+          ) : (
+            series.map((s) => <SeriesFicha key={s.id} s={s} onOpen={() => setOpenId(s.id)} />)
+          )}
         </TabsContent>
 
-        <TabsContent value="items" className="mt-3 space-y-2">
+        <TabsContent value="items" className="mt-3 space-y-3">
           {items.length === 0 && <Empty text="Nenhum item avulso. Toque em + para adicionar." />}
-          {items.map((i) => (
-            <Card key={i.id} className="flex items-center justify-between gap-2 p-4">
-              <div>
-                <p className="font-semibold">{i.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {i.category}
-                  {i.note ? ` · ${i.note}` : ""}
-                </p>
-              </div>
-              <Button
-                size="icon"
-                variant="outline"
-                aria-label="Encontrei"
-                onClick={() => setData((d) => ({ ...d, items: d.items.filter((x) => x.id !== i.id) }))}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-            </Card>
-          ))}
+          {mode === "stack" ? (
+            <StackView cards={items} index={Math.min(idx.items, Math.max(0, items.length - 1))} setIndex={(n) => setIdx((p) => ({ ...p, items: n }))}
+              render={(i) => <ItemFicha big i={i} onFound={() => removeItem(i.id)} />} />
+          ) : (
+            items.map((i) => <ItemFicha key={i.id} i={i} onFound={() => removeItem(i.id)} />)
+          )}
         </TabsContent>
       </Tabs>
+
+      <Sheet open={indexOpen} onOpenChange={setIndexOpen}>
+        <SheetContent side="left" className="flex w-80 flex-col bg-background">
+          <SheetHeader><SheetTitle className="font-display">Índice</SheetTitle></SheetHeader>
+          <Input value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." className="bg-card" />
+          <div className="-mx-2 flex-1 overflow-y-auto">
+            {(["series", "items"] as const).map((t) => {
+              const list = (t === "series" ? data.series : data.items).map((x, k) => ({ x, k })).filter(({ x }) => x.title.toLowerCase().includes(iq));
+              if (!list.length) return null;
+              return (
+                <div key={t} className="mb-4">
+                  <p className="px-2 pb-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{t === "series" ? "Séries" : "Avulsos"}</p>
+                  {list.map(({ x, k }) => (
+                    <button key={x.id} onClick={() => jump(t, k)} className="flex w-full items-baseline justify-between gap-2 border-b border-dashed border-border px-2 py-2 text-left hover:bg-accent">
+                      <span className="truncate">{x.title}</span>
+                      {"missing" in x && <span className="shrink-0 font-mono text-xs text-stamp">{x.missing.length}</span>}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Button
         size="icon"
