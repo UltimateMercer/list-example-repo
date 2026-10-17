@@ -4,7 +4,6 @@ import { Plus, Search, Trash2, Layers, List, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SeriesFicha, ItemFicha, StackView } from "@/components/fichas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -92,10 +91,10 @@ function Index() {
         <div className="mb-3 flex items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-bold tracking-tight">Faltantes</h1>
           <div className="flex items-center gap-1">
-            <ToggleGroup type="single" variant="outline" size="sm" value={mode} onValueChange={(v) => v && setMode(v as "stack" | "list")}>
-              <ToggleGroupItem value="stack" aria-label="Fichas empilhadas"><Layers className="h-4 w-4" /></ToggleGroupItem>
-              <ToggleGroupItem value="list" aria-label="Lista contínua"><List className="h-4 w-4" /></ToggleGroupItem>
-            </ToggleGroup>
+            <div className="flex rounded-md border border-input">
+              <Button variant={mode === "stack" ? "secondary" : "ghost"} size="sm" aria-label="Fichas empilhadas" aria-pressed={mode === "stack"} onClick={() => setMode("stack")}><Layers className="h-4 w-4" /></Button>
+              <Button variant={mode === "list" ? "secondary" : "ghost"} size="sm" aria-label="Lista contínua" aria-pressed={mode === "list"} onClick={() => setMode("list")}><List className="h-4 w-4" /></Button>
+            </div>
             <Button variant="outline" size="sm" onClick={() => setIndexOpen(true)} aria-label="Índice">
               <BookOpen className="h-4 w-4" />
             </Button>
