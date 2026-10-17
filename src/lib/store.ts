@@ -15,7 +15,7 @@ export interface LooseItem {
   id: string;
   title: string;
   category: Category;
-  note?: string;
+  note?: string | undefined;
 }
 
 export interface Data {
