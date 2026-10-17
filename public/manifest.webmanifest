@@ -1,0 +1,12 @@
+{
+  "name": "Faltantes",
+  "short_name": "Faltantes",
+  "description": "Lista de colecionáveis que faltam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e293b",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
