@@ -35,7 +35,7 @@ export function HoldRow({ label, note, checked, onToggle }: { label: string; not
 }
 
 export function Ficha({ title, category, summary, children, appearance = DEFAULT_APPEARANCE, onEdit, big }: {
-  title: string; category: string; summary: string; children: ReactNode; appearance?: Appearance; onEdit: () => void; big?: boolean;
+  title: string; category: string; summary: string; children: ReactNode; appearance?: Appearance | undefined; onEdit: () => void; big?: boolean;
 }) {
   return <section data-paper={appearance.paper} data-ink={appearance.ink} className={cn("ficha relative flex flex-col overflow-hidden rounded-sm border border-paper-border bg-paper p-5 text-paper-ink sm:p-7", big && "h-[min(65dvh,38rem)] min-h-72")}>
     <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
