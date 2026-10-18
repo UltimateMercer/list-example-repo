@@ -80,7 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Faltantes" },
       { name: "description", content: "Lista de colecionáveis que faltam" },
-      { name: "theme-color", content: "#1e293b" },
+      { name: "theme-color", content: "#f7f7f7" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -91,12 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap",
-      },
+      { rel: "preload", href: "/fonts/paper-mono.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icon-512.png" },
     ],
@@ -109,7 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
