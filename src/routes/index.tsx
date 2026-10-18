@@ -1,342 +1,121 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Plus, Search, Trash2, Layers, List, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { Plus, Search, Trash2, Layers, List, BookOpen, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { SeriesFicha, ItemFicha, StackView } from "@/components/fichas";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  CATEGORIES,
-  type Category,
-  type Series,
-  toggleMissing,
-  uid,
-  useData,
-} from "@/lib/store";
+import { Ficha, HoldRow, StackView } from "@/components/fichas";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CATEGORIES, DEFAULT_APPEARANCE, type Appearance, type Category, type Data, type Series, type Nomenclature, type PaperColor, type InkColor, toggleMissing, uid, useData, volumeLabel } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Faltantes — sua lista de colecionáveis que faltam" },
-      {
-        name: "description",
-        content: "Anote os volumes de mangás, livros e revistas que faltam na sua coleção e consulte rápido na livraria ou sebo.",
-      },
-      { property: "og:title", content: "Faltantes — lista de colecionáveis" },
-      {
-        property: "og:description",
-        content: "Consulte rápido o que falta na sua coleção de mangás, livros e revistas.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: Index,
+  head: () => ({ meta: [
+    { title: "Faltantes — seu fichário de coleções" },
+    { name: "description", content: "Suas séries e itens avulsos em fichas de papel. Consulte e marque o que falta na sua coleção, com dados salvos no dispositivo." },
+    { property: "og:title", content: "Faltantes — seu fichário de coleções" },
+    { property: "og:description", content: "Organize mangás, livros, revistas e avulsos em um fichário pessoal de itens faltantes." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }), component: Index,
 });
 
+type Card = { id: string; series?: Series };
+const LOOSE_ID = "loose-items";
+
 function Index() {
-  const [data, setData] = useData();
+  const [data, setData, loaded] = useData();
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState("series");
-  const [adding, setAdding] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
   const [mode, setMode] = useState<"stack" | "list">("stack");
-  const [idx, setIdx] = useState({ series: 0, items: 0 });
+  const [idx, setIdx] = useState(0);
   const [indexOpen, setIndexOpen] = useState(false);
   const [indexQ, setIndexQ] = useState("");
-
-  const query = q.trim().toLowerCase();
-  const series = useMemo(
-    () => data.series.filter((s) => s.title.toLowerCase().includes(query)),
-    [data.series, query],
-  );
-  const items = useMemo(
-    () => data.items.filter((i) => i.title.toLowerCase().includes(query)),
-    [data.items, query],
-  );
-  const open = data.series.find((s) => s.id === openId) ?? null;
-
-  const updateSeries = (id: string, patch: Partial<Series>) =>
-    setData((d) => ({ ...d, series: d.series.map((s) => (s.id === id ? { ...s, ...patch } : s)) }));
-
-  const removeItem = (id: string) => setData((d) => ({ ...d, items: d.items.filter((x) => x.id !== id) }));
-  const jump = (t: "series" | "items", idx: number) => {
-    setQ("");
-    setTab(t);
-    setMode("stack");
-    setIdx((p) => ({ ...p, [t]: idx }));
-    setIndexOpen(false);
+  const [adding, setAdding] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const allCards: Card[] = [...data.series.map((s) => ({ id: s.id, series: s })), { id: LOOSE_ID }];
+  const matches = (card: Card, query: string) => card.series
+    ? card.series.title.toLowerCase().includes(query)
+    : "avulsos".includes(query) || data.items.some((i) => i.title.toLowerCase().includes(query));
+  const cards = allCards.filter((card) => matches(card, q.trim().toLowerCase()));
+  const current = Math.min(idx, Math.max(0, cards.length - 1));
+  const editing = data.series.find((s) => s.id === editId);
+  const updateSeries = (id: string, patch: Partial<Series>) => setData((d) => ({ ...d, series: d.series.map((s) => s.id === id ? { ...s, ...patch } : s) }));
+  const jump = (id: string) => { setQ(""); setMode("stack"); setIdx(allCards.findIndex((c) => c.id === id)); setIndexOpen(false); };
+  const render = (card: Card, big = false) => {
+    const s = card.series;
+    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} onEdit={() => setEditId(s.id)}>
+      {Array.from({ length: s.total }, (_, k) => k + 1).map((v) => <HoldRow key={v} label={volumeLabel(s, v)} checked={!s.missing.includes(v)} onToggle={() => setData((d) => ({ ...d, series: d.series.map((x) => x.id === s.id ? { ...x, missing: toggleMissing(x.missing, v) } : x) }))} />)}
+    </Ficha>;
+    const items = data.items.filter((i) => !q.trim() || "avulsos".includes(q.trim().toLowerCase()) || i.title.toLowerCase().includes(q.trim().toLowerCase()));
+    return <Ficha title="Avulsos" category="Itens individuais" summary={`${data.items.filter((i) => !i.found).length} faltantes · ${data.items.filter((i) => i.found).length} na coleção`} appearance={data.looseAppearance} big={big} onEdit={() => setEditId(LOOSE_ID)}>
+      {items.map((i) => <HoldRow key={i.id} label={i.title} note={i.note || i.category} checked={!!i.found} onToggle={() => setData((d) => ({ ...d, items: d.items.map((x) => x.id === i.id ? { ...x, found: !x.found } : x) }))} />)}
+      {items.length === 0 && <div className="py-8 text-center"><BookOpen className="mx-auto mb-3 size-6 opacity-40" /><p className="text-sm opacity-60">Nenhum item avulso</p></div>}
+      <Button variant="ghost" className="mt-4 text-inherit hover:bg-current/10 hover:text-inherit" onClick={() => setAdding(true)}><Plus /> Adicionar item</Button>
+    </Ficha>;
   };
-  const iq = indexQ.trim().toLowerCase();
-
-  return (
-    <div className="mx-auto min-h-screen max-w-xl px-4 pb-24 pt-4">
-      <header className="sticky top-0 z-30 -mx-4 bg-background/95 px-4 pb-3 pt-2 backdrop-blur">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight">Faltantes</h1>
-          <div className="flex items-center gap-1">
-            <div className="flex rounded-md border border-input">
-              <Button variant={mode === "stack" ? "secondary" : "ghost"} size="sm" aria-label="Fichas empilhadas" aria-pressed={mode === "stack"} onClick={() => setMode("stack")}><Layers className="h-4 w-4" /></Button>
-              <Button variant={mode === "list" ? "secondary" : "ghost"} size="sm" aria-label="Lista contínua" aria-pressed={mode === "list"} onClick={() => setMode("list")}><List className="h-4 w-4" /></Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setIndexOpen(true)} aria-label="Índice">
-              <BookOpen className="h-4 w-4" />
-            </Button>
-          </div>
+  return <main className="mx-auto min-h-screen max-w-2xl px-5 pb-12 pt-5 sm:px-8 sm:pt-10">
+    <header className="mb-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-medium sm:text-3xl">Faltantes<span className="text-muted-foreground">.</span></h1>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" title="Fichas empilhadas" aria-label="Fichas empilhadas" aria-pressed={mode === "stack"} className={mode === "stack" ? "bg-secondary" : ""} onClick={() => setMode("stack")}><Layers /></Button>
+          <Button variant="ghost" size="icon" title="Lista contínua" aria-label="Lista contínua" aria-pressed={mode === "list"} className={mode === "list" ? "bg-secondary" : ""} onClick={() => setMode("list")}><List /></Button>
+          <span className="mx-1 h-5 border-l border-border" />
+          <Button variant="ghost" size="icon" title="Índice" aria-label="Índice" onClick={() => setIndexOpen(true)}><BookOpen /></Button>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar título..." className="h-11 bg-card pl-9 text-base" />
-        </div>
-      </header>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="series">Séries ({data.series.length})</TabsTrigger>
-          <TabsTrigger value="items">Avulsos ({data.items.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="series" className="mt-3 space-y-3">
-          {series.length === 0 && <Empty text="Nenhuma série. Toque em + para adicionar." />}
-          {mode === "stack" ? (
-            <StackView cards={series} index={Math.min(idx.series, Math.max(0, series.length - 1))} setIndex={(n) => setIdx((p) => ({ ...p, series: n }))}
-              render={(s) => <SeriesFicha big s={s} onOpen={() => setOpenId(s.id)} />} />
-          ) : (
-            series.map((s) => <SeriesFicha key={s.id} s={s} onOpen={() => setOpenId(s.id)} />)
-          )}
-        </TabsContent>
-
-        <TabsContent value="items" className="mt-3 space-y-3">
-          {items.length === 0 && <Empty text="Nenhum item avulso. Toque em + para adicionar." />}
-          {mode === "stack" ? (
-            <StackView cards={items} index={Math.min(idx.items, Math.max(0, items.length - 1))} setIndex={(n) => setIdx((p) => ({ ...p, items: n }))}
-              render={(i) => <ItemFicha big i={i} onFound={() => removeItem(i.id)} />} />
-          ) : (
-            items.map((i) => <ItemFicha key={i.id} i={i} onFound={() => removeItem(i.id)} />)
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <Sheet open={indexOpen} onOpenChange={setIndexOpen}>
-        <SheetContent side="left" className="flex w-80 flex-col bg-background">
-          <SheetHeader><SheetTitle className="font-display">Índice</SheetTitle></SheetHeader>
-          <Input value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." className="bg-card" />
-          <div className="-mx-2 flex-1 overflow-y-auto">
-            {(["series", "items"] as const).map((t) => {
-              const list = (t === "series" ? data.series : data.items).map((x, k) => ({ x, k })).filter(({ x }) => x.title.toLowerCase().includes(iq));
-              if (!list.length) return null;
-              return (
-                <div key={t} className="mb-4">
-                  <p className="px-2 pb-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{t === "series" ? "Séries" : "Avulsos"}</p>
-                  {list.map(({ x, k }) => (
-                    <button key={x.id} onClick={() => jump(t, k)} className="flex w-full items-baseline justify-between gap-2 border-b border-dashed border-border px-2 py-2 text-left hover:bg-accent">
-                      <span className="truncate">{x.title}</span>
-                      {"missing" in x && <span className="shrink-0 font-mono text-xs text-stamp">{x.missing.length}</span>}
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <Button
-        size="icon"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg"
-        aria-label="Adicionar"
-        onClick={() => setAdding(true)}
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
-
-      <AddDialog
-        open={adding}
-        onOpenChange={setAdding}
-        defaultKind={tab === "items" ? "item" : "series"}
-        onAdd={(kind, title, category, extra) => {
-          if (kind === "series") {
-            const total = Math.max(1, Number(extra) || 1);
-            setData((d) => ({
-              ...d,
-              series: [
-                { id: uid(), title, category, total, missing: Array.from({ length: total }, (_, k) => k + 1) },
-                ...d.series,
-              ],
-            }));
-            setTab("series");
-          } else {
-            setData((d) => ({ ...d, items: [{ id: uid(), title, category, note: extra || undefined }, ...d.items] }));
-            setTab("items");
-          }
-        }}
-      />
-
-      <Dialog open={!!open} onOpenChange={(o) => !o && setOpenId(null)}>
-        {open && (
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{open.title}</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Toque nos volumes que você <strong>já tem</strong>. Os destacados estão faltando.
-            </p>
-            <div className="grid grid-cols-6 gap-2">
-              {Array.from({ length: open.total }, (_, k) => k + 1).map((v) => {
-                const miss = open.missing.includes(v);
-                return (
-                  <Button
-                    key={v}
-                    size="sm"
-                    variant={miss ? "destructive" : "secondary"}
-                    onClick={() => updateSeries(open.id, { missing: toggleMissing(open.missing, v) })}
-                  >
-                    {v}
-                  </Button>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="total" className="shrink-0">Total de volumes</Label>
-              <Input
-                id="total"
-                type="number"
-                min={1}
-                defaultValue={open.total}
-                onBlur={(e) => {
-                  const total = Math.max(1, Number(e.target.value) || open.total);
-                  const added = Array.from({ length: Math.max(0, total - open.total) }, (_, k) => open.total + k + 1);
-                  updateSeries(open.id, {
-                    total,
-                    missing: [...open.missing.filter((v) => v <= total), ...added],
-                  });
-                }}
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                className="text-destructive"
-                onClick={() => {
-                  if (!confirm("Excluir esta série?")) return;
-                  setData((d) => ({ ...d, series: d.series.filter((s) => s.id !== open.id) }));
-                  setOpenId(null);
-                }}
-              >
-                <Trash2 className="mr-1 h-4 w-4" /> Excluir
-              </Button>
-              <Button onClick={() => setOpenId(null)}>Pronto</Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
-    </div>
-  );
+      </div>
+      <div className="mt-5 flex items-center justify-between border-b border-border pb-4 text-xs text-muted-foreground"><span>Meu fichário</span><span>{String(allCards.length).padStart(2, "0")} fichas</span></div>
+      <div className="relative mt-4"><Search className="absolute left-0 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Buscar título" value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} placeholder="Buscar no fichário..." className="h-11 rounded-none border-0 border-b bg-transparent pl-7 shadow-none focus-visible:ring-0" /></div>
+    </header>
+    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} render={(card) => render(card, true)} /> : <div className="space-y-6">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
+    <footer className="mt-7 flex items-center justify-between border-t border-border pt-5"><span className="text-[11px] text-muted-foreground">{data.series.reduce((n, s) => n + s.missing.length, 0) + data.items.filter((i) => !i.found).length} itens faltantes</span><Button variant="outline" onClick={() => setAdding(true)} aria-label="Adicionar"><Plus /> Nova ficha / item</Button></footer>
+    <Sheet open={indexOpen} onOpenChange={setIndexOpen}><SheetContent side="left" className="flex w-80 flex-col px-5"><SheetHeader className="px-0"><SheetTitle>Índice</SheetTitle></SheetHeader><Input aria-label="Pular para ficha" value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." /><div className="flex-1 overflow-y-auto">{allCards.filter((c) => matches(c, indexQ.trim().toLowerCase())).map((c) => <Button key={c.id} variant="ghost" className="h-auto w-full justify-between rounded-none border-b py-4 whitespace-normal text-left" onClick={() => jump(c.id)}><span className="min-w-0 break-words">{c.series?.title ?? "Avulsos"}</span><ArrowUpRight className="shrink-0" /></Button>)}</div></SheetContent></Sheet>
+    <AddDialog open={adding} onOpenChange={setAdding} onAdd={(kind, title, category, extra, nomenclature, appearance) => {
+      if (kind === "series") {
+        const total = Math.max(1, Math.floor(Number(extra) || 1));
+        const id = uid();
+        setData((d) => ({ ...d, series: [{ id, title, category, total, missing: Array.from({ length: total }, (_, k) => k + 1), nomenclature, appearance }, ...d.series] }));
+        setIdx(0);
+      } else {
+        setData((d) => ({ ...d, items: [...d.items, { id: uid(), title, category, note: extra || undefined }] }));
+        setIdx(data.series.length);
+      }
+      setQ("");
+    }} />
+    {editId && <EditDialog key={editId} series={editing} data={data} onClose={() => setEditId(null)} onUpdate={(patch) => editing && updateSeries(editing.id, patch)} onAppearance={(appearance) => editing ? updateSeries(editing.id, { appearance }) : setData((d) => ({ ...d, looseAppearance: appearance }))} onRemoveItem={(id) => setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) }))} onDelete={() => { if (editing && confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((s) => s.id !== editing.id) })); setEditId(null); } }} />}
+  </main>;
 }
 
-function Empty({ text }: { text: string }) {
-  return <p className="py-10 text-center text-sm text-muted-foreground">{text}</p>;
+const papers: { id: PaperColor; name: string }[] = [{ id: "white", name: "Branco" }, { id: "craft", name: "Craft" }, { id: "sepia", name: "Sépia" }, { id: "rose", name: "Rosa" }, { id: "sage", name: "Verde" }, { id: "blue", name: "Azul" }];
+const inks: { id: InkColor; name: string }[] = [{ id: "graphite", name: "Grafite" }, { id: "blue", name: "Azul" }, { id: "red", name: "Vermelho" }, { id: "light", name: "Branco" }];
+function AppearanceFields({ value, onChange }: { value: Appearance; onChange: (a: Appearance) => void }) {
+  return <div className="space-y-4"><fieldset><legend className="mb-2 text-sm">Cor do papel</legend><div className="flex flex-wrap gap-2">{papers.map((p) => <Button type="button" key={p.id} variant="outline" size="icon" data-paper={p.id} aria-label={`Papel ${p.name}`} title={p.name} aria-pressed={value.paper === p.id} className={`size-8 rounded-full bg-paper hover:bg-paper ${value.paper === p.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, paper: p.id })} />)}</div></fieldset><fieldset><legend className="mb-2 text-sm">Cor do texto</legend><div className="flex gap-2">{inks.map((i) => <Button type="button" key={i.id} data-ink={i.id} variant="outline" size="icon" aria-label={`Texto ${i.name}`} title={i.name} aria-pressed={value.ink === i.id} className={`size-8 rounded-full bg-paper-ink hover:bg-paper-ink ${value.ink === i.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, ink: i.id })} />)}</div></fieldset></div>;
 }
-
-function AddDialog({
-  open,
-  onOpenChange,
-  defaultKind,
-  onAdd,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  defaultKind: "series" | "item";
-  onAdd: (kind: "series" | "item", title: string, category: Category, extra: string) => void;
-}) {
-  const [kind, setKind] = useState<"series" | "item">(defaultKind);
+function NomenclatureField({ value, onChange }: { value: Nomenclature; onChange: (v: Nomenclature) => void }) {
+  return <div className="space-y-2"><Label>Nomenclatura</Label><Select value={value} onValueChange={(v) => onChange(v as Nomenclature)}><SelectTrigger aria-label="Nomenclatura"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Volume">Volume</SelectItem><SelectItem value="Edição">Edição</SelectItem></SelectContent></Select></div>;
+}
+function AddDialog({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (kind: "series" | "item", title: string, category: Category, extra: string, nomenclature: Nomenclature, appearance: Appearance) => void }) {
+  const [kind, setKind] = useState<"series" | "item">("series");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("Mangá");
   const [extra, setExtra] = useState("");
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (o) setKind(defaultKind);
-        else {
-          setTitle("");
-          setExtra("");
-        }
-        onOpenChange(o);
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Adicionar</DialogTitle>
-        </DialogHeader>
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!title.trim()) return;
-            onAdd(kind, title.trim(), category, extra.trim());
-            setTitle("");
-            setExtra("");
-            onOpenChange(false);
-          }}
-        >
-          <Tabs value={kind} onValueChange={(v) => setKind(v as "series" | "item")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="series">Série / coleção</TabsTrigger>
-              <TabsTrigger value="item">Item avulso</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="space-y-1">
-            <Label htmlFor="title">Título</Label>
-            <Input id="title" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Dragon Ball" />
-          </div>
-          <div className="space-y-1">
-            <Label>Categoria</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="extra">{kind === "series" ? "Total de volumes" : "Observação (opcional)"}</Label>
-            <Input
-              id="extra"
-              type={kind === "series" ? "number" : "text"}
-              min={1}
-              value={extra}
-              onChange={(e) => setExtra(e.target.value)}
-              placeholder={kind === "series" ? "Ex: 42" : "Ex: edição de capa dura"}
-            />
-            {kind === "series" && (
-              <p className="text-xs text-muted-foreground">Todos começam como faltantes; depois marque os que você tem.</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button type="submit" className="w-full">Adicionar</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+  const [nomenclature, setNomenclature] = useState<Nomenclature>("Volume");
+  const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Adicionar ao fichário</DialogTitle><DialogDescription className="sr-only">Cadastrar série ou item avulso</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; onAdd(kind, title.trim(), category, extra.trim(), nomenclature, appearance); setTitle(""); setExtra(""); onOpenChange(false); }}>
+    <div className="space-y-2"><Label>Tipo</Label><Select value={kind} onValueChange={(v) => { setKind(v as "series" | "item"); setExtra(""); }}><SelectTrigger aria-label="Tipo"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="series">Série / coleção</SelectItem><SelectItem value="item">Item avulso</SelectItem></SelectContent></Select></div>
+    <div className="space-y-2"><Label htmlFor="title">Título</Label><Input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Dragon Ball" /></div>
+    <div className="space-y-2"><Label>Categoria</Label><Select value={category} onValueChange={(v) => { setCategory(v as Category); setNomenclature(v === "HQ" || v === "Revista" ? "Edição" : "Volume"); }}><SelectTrigger aria-label="Categoria"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+    {kind === "series" && <NomenclatureField value={nomenclature} onChange={setNomenclature} />}
+    <div className="space-y-2"><Label htmlFor="extra">{kind === "series" ? `Total de ${nomenclature === "Volume" ? "volumes" : "edições"}` : "Observação (opcional)"}</Label><Input id="extra" type={kind === "series" ? "number" : "text"} min={1} step={1} required={kind === "series"} value={extra} onChange={(e) => setExtra(e.target.value)} /></div>
+    {kind === "series" && <AppearanceFields value={appearance} onChange={setAppearance} />}
+    <DialogFooter><Button type="submit" className="w-full"><Plus /> Adicionar</Button></DialogFooter>
+  </form></DialogContent></Dialog>;
+}
+function EditDialog({ series, data, onClose, onUpdate, onAppearance, onDelete, onRemoveItem }: { series?: Series | undefined; data: Data; onClose: () => void; onUpdate: (p: Partial<Series>) => void; onAppearance: (a: Appearance) => void; onDelete: () => void; onRemoveItem: (id: string) => void }) {
+  const appearance = (series ? series.appearance : data.looseAppearance) ?? DEFAULT_APPEARANCE;
+  return <Dialog open onOpenChange={(o) => !o && onClose()}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{series?.title ?? "Avulsos"}</DialogTitle><DialogDescription className="sr-only">Editar ficha</DialogDescription></DialogHeader><div className="space-y-5">
+    {series && <><div className="space-y-2"><Label htmlFor="edit-title">Título</Label><Input id="edit-title" defaultValue={series.title} onBlur={(e) => { if (e.target.value.trim()) onUpdate({ title: e.target.value.trim() }); }} /></div><NomenclatureField value={series.nomenclature ?? "Volume"} onChange={(nomenclature) => onUpdate({ nomenclature })} /><div className="space-y-2"><Label htmlFor="total">Total de {series.nomenclature === "Edição" ? "edições" : "volumes"}</Label><Input id="total" type="number" min={1} step={1} defaultValue={series.total} onBlur={(e) => { const total = Math.max(1, Math.floor(Number(e.target.value) || series.total)); onUpdate({ total, missing: [...series.missing.filter((v) => v <= total), ...Array.from({ length: Math.max(0, total - series.total) }, (_, k) => series.total + k + 1)] }); }} /></div></>}
+    <AppearanceFields value={appearance} onChange={onAppearance} />
+    {!series && data.items.length > 0 && <div className="border-t pt-3">{data.items.map((i) => <div key={i.id} className="flex items-center justify-between gap-2 border-b py-2"><span className="min-w-0 break-words text-sm">{i.title}</span><Button variant="ghost" size="icon" aria-label={`Excluir ${i.title}`} onClick={() => { if (confirm("Excluir este item?")) onRemoveItem(i.id); }}><Trash2 /></Button></div>)}</div>}
+  </div><DialogFooter className="mt-4">{series && <Button variant="ghost" className="text-destructive" onClick={onDelete}><Trash2 /> Excluir</Button>}<Button onClick={onClose}>Pronto</Button></DialogFooter></DialogContent></Dialog>;
 }

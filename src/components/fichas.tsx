@@ -1,108 +1,87 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { LooseItem, Series } from "@/lib/store";
+import { DEFAULT_APPEARANCE, HOLD_DURATION, type Appearance } from "@/lib/store";
 
-export function Ficha({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) {
-  return (
-    <div onClick={onClick} className={cn("ficha relative overflow-hidden rounded-sm border border-border bg-card p-5 text-card-foreground", onClick && "cursor-pointer", className)}>
-      {children}
-    </div>
-  );
+export function HoldRow({ label, note, checked, onToggle }: { label: string; note?: string; checked: boolean; onToggle: () => void }) {
+  const [holding, setHolding] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; setHolding(false); };
+  const begin = () => {
+    if (timer.current) return;
+    setHolding(true);
+    timer.current = setTimeout(() => { timer.current = null; setHolding(false); onToggle(); }, HOLD_DURATION);
+  };
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  return <Button variant="ghost" role="checkbox" aria-checked={checked} aria-label={label}
+    className={cn("hold-row relative h-auto min-h-12 w-full justify-start overflow-hidden rounded-none border-b border-current/10 px-0 py-3 text-left font-normal whitespace-normal hover:bg-current/5", holding && "is-holding")}
+    onPointerDown={(e) => { if (e.button !== 0) return; origin.current = { x: e.clientX, y: e.clientY }; begin(); }}
+    onPointerMove={(e) => { if (origin.current && Math.hypot(e.clientX - origin.current.x, e.clientY - origin.current.y) > 10) cancel(); }}
+    onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel} onBlur={cancel}
+    onKeyDown={(e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); begin(); } }}
+    onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); cancel(); } }}
+    onContextMenu={(e) => e.preventDefault()}>
+    <span className="hold-fill absolute inset-0 origin-left bg-current/10" />
+    <span className={cn("relative flex size-4 shrink-0 items-center justify-center rounded-[2px] border border-current", checked && "bg-current")}>
+      {checked && <Check className="size-3 text-paper" />}
+    </span>
+    <span className={cn("relative min-w-0 flex-1 break-words text-sm", checked && "opacity-50")}>
+      <span className={checked ? "line-through" : ""}>{label}</span>
+      {note && <span className="mt-1 block text-xs opacity-60">{note}</span>}
+    </span>
+  </Button>;
 }
 
-export function SeriesFicha({ s, onOpen, big }: { s: Series; onOpen: () => void; big?: boolean }) {
-  return (
-    <Ficha onClick={onOpen} className={big ? "min-h-[22rem]" : ""}>
-      <div className="mb-3 flex items-baseline justify-between border-b-2 border-ink pb-2">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{s.category} · série</span>
-        <span className="font-mono text-[11px] text-muted-foreground">{s.total} vol.</span>
+export function Ficha({ title, category, summary, children, appearance = DEFAULT_APPEARANCE, onEdit, big }: {
+  title: string; category: string; summary: string; children: ReactNode; appearance?: Appearance | undefined; onEdit: () => void; big?: boolean;
+}) {
+  return <section data-paper={appearance.paper} data-ink={appearance.ink} className={cn("ficha relative flex flex-col overflow-hidden rounded-sm border border-paper-border bg-paper p-5 text-paper-ink sm:p-7", big && "h-[min(65dvh,38rem)] min-h-72")}>
+    <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-xs uppercase opacity-60">{category}</span>
+        <Button variant="ghost" size="icon" className="size-8 text-inherit hover:bg-current/10 hover:text-inherit" aria-label={`Editar ${title}`} title="Editar ficha" onClick={onEdit}><Settings2 /></Button>
       </div>
-      <h3 className={cn("font-display font-bold leading-tight", big ? "text-2xl" : "text-lg")}>{s.title}</h3>
-      <p className="mt-1 font-mono text-xs text-muted-foreground">
-        {s.missing.length ? `faltam ${s.missing.length} de ${s.total}` : "coleção completa ✓"}
-      </p>
-      {s.missing.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {s.missing.map((v) => (
-            <span key={v} className="rounded-sm border border-stamp px-1.5 py-0.5 font-mono text-xs text-stamp">#{v}</span>
-          ))}
-        </div>
-      )}
-    </Ficha>
-  );
+      <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
+      <p className="mt-2 text-xs opacity-60">{summary}</p>
+    </header>
+    <div className={cn("relative min-h-0", big && "flex-1 overflow-y-auto overscroll-contain pr-2")}>{children}</div>
+  </section>;
 }
 
-export function ItemFicha({ i, onFound, big }: { i: LooseItem; onFound: () => void; big?: boolean }) {
-  return (
-    <Ficha className={big ? "min-h-[22rem]" : ""}>
-      <div className="mb-3 flex items-baseline justify-between border-b-2 border-ink pb-2">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{i.category} · avulso</span>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className={cn("font-display font-bold leading-tight", big ? "text-2xl" : "text-lg")}>{i.title}</h3>
-          {i.note && <p className="mt-1 font-mono text-xs text-muted-foreground">{i.note}</p>}
-        </div>
-        <Button size="sm" variant="outline" onClick={onFound}><Check className="mr-1 h-4 w-4" />Achei</Button>
-      </div>
-    </Ficha>
-  );
-}
-
-export function StackView<T extends { id: string }>({
-  cards, index, setIndex, render,
-}: { cards: T[]; index: number; setIndex: (n: number) => void; render: (c: T) => ReactNode }) {
+export function StackView<T extends { id: string }>({ cards, index, setIndex, render }: {
+  cards: T[]; index: number; setIndex: (n: number) => void; render: (c: T) => ReactNode;
+}) {
   const [dx, setDx] = useState(0);
-  const start = useRef<number | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
   const n = cards.length;
-  const go = (d: number) => n && setIndex((index + d + n) % n);
-
+  const go = (d: number) => { if (n) setIndex((index + d + n) % n); };
   useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === "INPUT") return;
+    const key = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest("input, textarea, button, [role='dialog'], [role='combobox']")) return;
       if (e.key === "ArrowRight") go(1);
       if (e.key === "ArrowLeft") go(-1);
     };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
   });
-
-  if (!n) return null;
-  const behind = [2, 1].filter((o) => o < n);
-
-  return (
-    <div>
-      <div
-        className="relative mx-auto mt-6 h-[24rem] touch-pan-y select-none"
-        onPointerDown={(e) => (start.current = e.clientX)}
-        onPointerMove={(e) => start.current !== null && setDx(e.clientX - start.current)}
-        onPointerUp={() => {
-          if (Math.abs(dx) > 80) go(dx < 0 ? 1 : -1);
-          start.current = null;
-          setDx(0);
-        }}
-        onPointerCancel={() => { start.current = null; setDx(0); }}
-      >
-        {behind.map((o) => (
-          <div key={o} className="absolute inset-x-0 top-0" style={{ transform: `translateY(${-o * 10}px) scale(${1 - o * 0.04})`, zIndex: 10 - o }}>
-            <div className="ficha h-[22rem] rounded-sm border border-border bg-card opacity-90" />
-          </div>
-        ))}
-        <div
-          key={cards[index]!.id}
-          className={cn("absolute inset-x-0 top-0 z-20", !dx && "transition-transform duration-200")}
-          style={{ transform: `translateX(${dx}px) rotate(${dx / 25}deg)` }}
-        >
-          {render(cards[index]!)}
-        </div>
-      </div>
-      <div className="mt-2 flex items-center justify-center gap-4">
-        <Button variant="outline" size="icon" aria-label="Anterior" onClick={() => go(-1)}><ChevronLeft className="h-5 w-5" /></Button>
-        <span className="font-mono text-sm text-muted-foreground">{String(index + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
-        <Button variant="outline" size="icon" aria-label="Próxima" onClick={() => go(1)}><ChevronRight className="h-5 w-5" /></Button>
-      </div>
+  const current = cards[index];
+  if (!current) return null;
+  return <div className="mt-8">
+    <div className="relative touch-pan-y"
+      onPointerDown={(e) => { start.current = { x: e.clientX, y: e.clientY }; }}
+      onPointerMove={(e) => { if (!start.current) return; const x = e.clientX - start.current.x; const y = e.clientY - start.current.y; if (Math.abs(x) > Math.abs(y) && Math.abs(x) > 10) setDx(x); }}
+      onPointerUp={() => { if (Math.abs(dx) > 80) go(dx < 0 ? 1 : -1); start.current = null; setDx(0); }}
+      onPointerCancel={() => { start.current = null; setDx(0); }}
+      onPointerLeave={() => { start.current = null; setDx(0); }}>
+      {[2, 1].filter((o) => o < n).map((o) => <div key={o} className="absolute inset-0 rounded-sm border border-border bg-card" style={{ transform: `translateY(${-o * 9}px) scale(${1 - o * .035})` }} />)}
+      <div key={current.id} className={cn("relative", !dx && "transition-transform motion-reduce:transition-none")} style={{ transform: `translateX(${dx}px) rotate(${dx / 40}deg)` }}>{render(current)}</div>
     </div>
-  );
+    <div className="mt-5 flex items-center justify-center gap-6">
+      <Button variant="ghost" size="icon" aria-label="Anterior" onClick={() => go(-1)} disabled={n < 2}><ChevronLeft /></Button>
+      <span className="text-xs text-muted-foreground">{String(index + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
+      <Button variant="ghost" size="icon" aria-label="Próxima" onClick={() => go(1)} disabled={n < 2}><ChevronRight /></Button>
+    </div>
+  </div>;
 }
