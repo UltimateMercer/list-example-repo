@@ -83,7 +83,6 @@ function Index() {
         setData((d) => ({ ...d, items: [...d.items, { id: uid(), title, category, note: extra || undefined }] }));
         setIdx(data.series.length);
       }
-      setQ("");
     }} />
     {editId && <EditDialog key={editId} series={editing} data={data} onClose={() => setEditId(null)} onUpdate={(patch) => editing && updateSeries(editing.id, patch)} onAppearance={(appearance) => editing ? updateSeries(editing.id, { appearance }) : setData((d) => ({ ...d, looseAppearance: appearance }))} onRemoveItem={(id) => setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) }))} onDelete={() => { if (editing && confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((s) => s.id !== editing.id) })); setEditId(null); } }} />}
   </main>;
