@@ -54,9 +54,28 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   cards: T[]; index: number; setIndex: (n: number) => void; render: (c: T) => ReactNode;
 }) {
   const [dx, setDx] = useState(0);
-  const start = useRef<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [fly, setFly] = useState<{ id: string; dir: number } | null>(null);
+  const [enter, setEnter] = useState<string | null>(null);
+  const start = useRef<{ x: number; y: number; t: number; axis: "x" | "y" | null; id: number } | null>(null);
+  const busy = useRef(false);
   const n = cards.length;
-  const go = (d: number) => { if (n) setIndex((index + d + n) % n); };
+  const width = () => (typeof window === "undefined" ? 400 : Math.min(window.innerWidth, 520));
+  const go = (d: number) => {
+    if (n < 2 || busy.current) return;
+    busy.current = true;
+    if (d > 0) {
+      // current card slides out, then tucks behind the pile
+      setFly({ id: cards[index]!.id, dir: dx < 0 || dx === 0 ? -1 : 1 });
+      setTimeout(() => { setIndex((index + 1) % n); setFly(null); setDx(0); busy.current = false; }, 260);
+    } else {
+      // previous card comes from the back of the pile to the front
+      const prev = (index - 1 + n) % n;
+      setEnter(cards[prev]!.id); setIndex(prev); setDx(0);
+      requestAnimationFrame(() => requestAnimationFrame(() => setEnter(null)));
+      setTimeout(() => { busy.current = false; }, 320);
+    }
+  };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest("input, textarea, button, [role='dialog'], [role='combobox']")) return;
@@ -68,15 +87,50 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   });
   const current = cards[index];
   if (!current) return null;
+  const end = (commit: boolean) => {
+    const s = start.current; start.current = null; setDragging(false);
+    if (!s || s.axis !== "x") return;
+    const v = Math.abs(dx) / Math.max(1, Date.now() - s.t);
+    if (commit && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.4))) go(dx < 0 ? 1 : -1);
+    else setDx(0);
+  };
+  const depth = Math.min(n, 3);
+  const layers = Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!);
+  const ease = "transform 300ms cubic-bezier(.22,.8,.3,1), filter 300ms, opacity 300ms";
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
-    <div className="relative min-h-0 flex-1 touch-pan-y mb-6"
-      onPointerDown={(e) => { start.current = { x: e.clientX, y: e.clientY }; }}
-      onPointerMove={(e) => { if (!start.current) return; const x = e.clientX - start.current.x; const y = e.clientY - start.current.y; if (Math.abs(x) > Math.abs(y) && Math.abs(x) > 10) setDx(x); }}
-      onPointerUp={() => { if (Math.abs(dx) > 80) go(dx < 0 ? 1 : -1); start.current = null; setDx(0); }}
-      onPointerCancel={() => { start.current = null; setDx(0); }}
-      onPointerLeave={() => { start.current = null; setDx(0); }}>
-      {[2, 1].filter((o) => o < n).map((o) => { const c = cards[(index + o) % n]!; return <div key={`${o}-${c.id}`} aria-hidden inert className="pointer-events-none absolute inset-0" style={{ transform: `translateY(${o * 10}px) scale(${1 - o * 0.035})`, transformOrigin: "50% 100%", filter: `brightness(${1 - o * 0.04})` }}>{render(c)}</div>; })}
-      <div key={current.id} className={cn("relative h-full", !dx && "transition-transform motion-reduce:transition-none")} style={{ transform: `translateX(${dx}px) rotate(${dx / 60}deg)` }}>{render(current)}</div>
+    <div className="relative min-h-0 flex-1 touch-pan-y mb-6 select-none"
+      onPointerDown={(e) => { if (busy.current) return; start.current = { x: e.clientX, y: e.clientY, t: Date.now(), axis: null, id: e.pointerId }; }}
+      onPointerMove={(e) => {
+        const s = start.current; if (!s) return;
+        const x = e.clientX - s.x; const y = e.clientY - s.y;
+        if (!s.axis && (Math.abs(x) > 8 || Math.abs(y) > 8)) {
+          s.axis = Math.abs(x) > Math.abs(y) * 0.8 ? "x" : "y";
+          if (s.axis === "x") { setDragging(true); try { e.currentTarget.setPointerCapture(s.id); } catch { /* noop */ } }
+        }
+        if (s.axis === "x") setDx(x);
+      }}
+      onPointerUp={() => end(true)}
+      onPointerCancel={() => end(false)}>
+      {fly && !layers.some((c) => c.id === fly.id) ? null : null}
+      {[...layers].reverse().map((c) => {
+        const o = layers.indexOf(c);
+        const isFly = fly?.id === c.id;
+        const isTop = o === 0 && !isFly;
+        // while dragging, cards behind rise toward the front
+        const p = isTop ? Math.min(1, Math.abs(dx) / width()) : fly ? 1 : 0;
+        const d = Math.max(0, o - p);
+        let transform = `translateY(${d * 10}px) scale(${1 - d * 0.035})`;
+        let z = 10 - o;
+        if (isTop) transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
+        if (isFly) { transform = `translateX(${fly.dir * width() * 1.15}px) rotate(${fly.dir * 12}deg)`; z = 20; }
+        if (enter === c.id) { transform = `translateX(${-width() * 1.15}px) rotate(-12deg)`; }
+        return <div key={c.id} aria-hidden={!isTop} inert={!isTop}
+          className={cn("absolute inset-0", !isTop && "pointer-events-none")}
+          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "50% 100%", filter: `brightness(${1 - d * 0.04})`,
+            transition: (dragging && isTop) || enter === c.id ? "none" : ease }}>
+          {render(c)}
+        </div>;
+      })}
     </div>
     <div className="flex shrink-0 items-center justify-center gap-6">
       <Button variant="ghost" size="icon" aria-label="Anterior" onClick={() => go(-1)} disabled={n < 2}><ChevronLeft /></Button>
