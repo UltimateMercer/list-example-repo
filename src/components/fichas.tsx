@@ -111,7 +111,6 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
       }}
       onPointerUp={() => end(true)}
       onPointerCancel={() => end(false)}>
-      {fly && !layers.some((c) => c.id === fly.id) ? null : null}
       {[...layers].reverse().map((c) => {
         const o = layers.indexOf(c);
         const isFly = fly?.id === c.id;
