@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Search, Trash2, Layers, List, BookOpen, ArrowUpRight } from "lucide-react";
+import { Plus, Trash2, ArrowDownUp, Layers, List, BookOpen, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,9 @@ const LOOSE_ID = "loose-items";
 
 function Index() {
   const [data, setData, loaded] = useData();
-  const [q, setQ] = useState("");
+  const q = "";
+  const [sort, setSort] = useState<"order" | "missing">("order");
+  const [newItem, setNewItem] = useState("");
   const [mode, setMode] = useState<"stack" | "list">("stack");
   const [idx, setIdx] = useState(0);
   const [indexOpen, setIndexOpen] = useState(false);
@@ -40,21 +42,23 @@ function Index() {
   const current = Math.min(idx, Math.max(0, cards.length - 1));
   const editing = data.series.find((s) => s.id === editId);
   const updateSeries = (id: string, patch: Partial<Series>) => setData((d) => ({ ...d, series: d.series.map((s) => s.id === id ? { ...s, ...patch } : s) }));
-  const jump = (id: string) => { setQ(""); setMode("stack"); setIdx(allCards.findIndex((c) => c.id === id)); setIndexOpen(false); };
+  const jump = (id: string) => { setMode("stack"); setIdx(allCards.findIndex((c) => c.id === id)); setIndexOpen(false); };
+  const sortBtn = <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-inherit hover:bg-current/10 hover:text-inherit" aria-label="Alterar ordenação" onClick={() => setSort(sort === "order" ? "missing" : "order")}><ArrowDownUp className="size-3.5" />{sort === "order" ? "Em ordem" : "Faltantes primeiro"}</Button>;
+  const ord = <T,>(arr: T[], has: (x: T) => boolean) => sort === "missing" ? [...arr.filter((x) => !has(x)), ...arr.filter(has)] : arr;
   const render = (card: Card, big = false) => {
     const s = card.series;
-    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} onEdit={() => setEditId(s.id)}>
-      {Array.from({ length: s.total }, (_, k) => k + 1).map((v) => <HoldRow key={v} label={volumeLabel(s, v)} checked={!s.missing.includes(v)} onToggle={() => setData((d) => ({ ...d, series: d.series.map((x) => x.id === s.id ? { ...x, missing: toggleMissing(x.missing, v) } : x) }))} />)}
+    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} actions={sortBtn} onEdit={() => setEditId(s.id)}>
+      {ord(Array.from({ length: s.total }, (_, k) => k + 1), (v) => !s.missing.includes(v)).map((v) => <HoldRow key={v} label={volumeLabel(s, v)} checked={!s.missing.includes(v)} onToggle={() => setData((d) => ({ ...d, series: d.series.map((x) => x.id === s.id ? { ...x, missing: toggleMissing(x.missing, v) } : x) }))} />)}
     </Ficha>;
     const items = data.items.filter((i) => !q.trim() || "avulsos".includes(q.trim().toLowerCase()) || i.title.toLowerCase().includes(q.trim().toLowerCase()));
-    return <Ficha title="Avulsos" category="Itens individuais" summary={`${data.items.filter((i) => !i.found).length} faltantes · ${data.items.filter((i) => i.found).length} na coleção`} appearance={data.looseAppearance} big={big} onEdit={() => setEditId(LOOSE_ID)}>
-      {items.map((i) => <HoldRow key={i.id} label={i.title} note={i.note || i.category} checked={!!i.found} onToggle={() => setData((d) => ({ ...d, items: d.items.map((x) => x.id === i.id ? { ...x, found: !x.found } : x) }))} />)}
+    return <Ficha title="Avulsos" category="Itens individuais" summary={`${data.items.filter((i) => !i.found).length} faltantes · ${data.items.filter((i) => i.found).length} na coleção`} appearance={data.looseAppearance} big={big} actions={sortBtn} onEdit={() => setEditId(LOOSE_ID)}>
+      {ord(items, (i) => !!i.found).map((i) => <HoldRow key={i.id} label={i.title} note={i.note || i.category} checked={!!i.found} onToggle={() => setData((d) => ({ ...d, items: d.items.map((x) => x.id === i.id ? { ...x, found: !x.found } : x) }))} />)}
       {items.length === 0 && <div className="py-8 text-center"><BookOpen className="mx-auto mb-3 size-6 opacity-40" /><p className="text-sm opacity-60">Nenhum item avulso</p></div>}
-      <Button variant="ghost" className="mt-4 text-inherit hover:bg-current/10 hover:text-inherit" onClick={() => setAdding(true)}><Plus /> Adicionar item</Button>
+      <form className="mt-3 flex items-center gap-2 px-3" onSubmit={(e) => { e.preventDefault(); const t = newItem.trim(); if (!t) return; setData((d) => ({ ...d, items: [...d.items, { id: uid(), title: t, category: "Livro" as Category }] })); setNewItem(""); }}><Plus className="size-4 shrink-0 opacity-60" /><input aria-label="Novo item avulso" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Adicionar item…" className="min-w-0 flex-1 border-b border-current/25 bg-transparent py-2 text-sm outline-none placeholder:text-current/40 focus:border-current" /></form>
     </Ficha>;
   };
-  return <main className="mx-auto min-h-screen max-w-2xl px-5 pb-12 pt-5 sm:px-8 sm:pt-10">
-    <header className="mb-6">
+  return <main className="mx-auto flex h-dvh max-w-2xl flex-col overflow-hidden px-5 pb-4 pt-5 sm:px-8 sm:pt-8">
+    <header className="mb-4 shrink-0">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-medium sm:text-3xl">Faltantes<span className="text-muted-foreground">.</span></h1>
         <div className="flex items-center gap-1">
@@ -62,13 +66,12 @@ function Index() {
           <Button variant="ghost" size="icon" title="Lista contínua" aria-label="Lista contínua" aria-pressed={mode === "list"} className={mode === "list" ? "bg-secondary" : ""} onClick={() => setMode("list")}><List /></Button>
           <span className="mx-1 h-5 border-l border-border" />
           <Button variant="ghost" size="icon" title="Índice" aria-label="Índice" onClick={() => setIndexOpen(true)}><BookOpen /></Button>
+          <Button variant="outline" size="sm" className="ml-1" onClick={() => setAdding(true)} aria-label="Nova ficha"><Plus /> <span className="hidden sm:inline">Nova ficha</span></Button>
         </div>
       </div>
-      <div className="mt-5 flex items-center justify-between border-b border-border pb-4 text-xs text-muted-foreground"><span>Meu fichário</span><span>{String(allCards.length).padStart(2, "0")} fichas</span></div>
-      <div className="relative mt-4"><Search className="absolute left-0 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Buscar título" value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} placeholder="Buscar no fichário..." className="h-11 rounded-none border-0 border-b bg-transparent pl-7 shadow-none focus-visible:ring-0" /></div>
+      <div className="mt-5 flex items-center justify-between border-b border-border pb-4 text-xs text-muted-foreground"><span>Meu fichário</span><span>{data.series.reduce((n, s) => n + s.missing.length, 0) + data.items.filter((i) => !i.found).length} faltantes · {String(allCards.length).padStart(2, "0")} fichas</span></div>
     </header>
-    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} render={(card) => render(card, true)} /> : <div className="space-y-6">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
-    <footer className="mt-7 flex items-center justify-between border-t border-border pt-5"><span className="text-[11px] text-muted-foreground">{data.series.reduce((n, s) => n + s.missing.length, 0) + data.items.filter((i) => !i.found).length} itens faltantes</span><Button variant="outline" onClick={() => setAdding(true)} aria-label="Adicionar"><Plus /> Nova ficha / item</Button></footer>
+    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} render={(card) => render(card, true)} /> : <div className="scrollbar-none min-h-0 flex-1 space-y-6 overflow-y-auto">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
     <Sheet open={indexOpen} onOpenChange={setIndexOpen}><SheetContent side="left" className="flex w-80 flex-col px-5"><SheetHeader className="px-0"><SheetTitle>Índice</SheetTitle></SheetHeader><Input aria-label="Pular para ficha" value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." /><div className="flex-1 overflow-y-auto">{allCards.filter((c) => matches(c, indexQ.trim().toLowerCase())).map((c) => <Button key={c.id} variant="ghost" className="h-auto w-full justify-between rounded-none border-b py-4 whitespace-normal text-left" onClick={() => jump(c.id)}><span className="min-w-0 break-words">{c.series?.title ?? "Avulsos"}</span><ArrowUpRight className="shrink-0" /></Button>)}</div></SheetContent></Sheet>
     <AddDialog open={adding} onOpenChange={setAdding} onAdd={(kind, title, category, extra, nomenclature, appearance) => {
       if (kind === "series") {
@@ -95,14 +98,13 @@ function NomenclatureField({ value, onChange }: { value: Nomenclature; onChange:
   return <div className="space-y-2"><Label>Nomenclatura</Label><Select value={value} onValueChange={(v) => onChange(v as Nomenclature)}><SelectTrigger aria-label="Nomenclatura"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Volume">Volume</SelectItem><SelectItem value="Edição">Edição</SelectItem></SelectContent></Select></div>;
 }
 function AddDialog({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (kind: "series" | "item", title: string, category: Category, extra: string, nomenclature: Nomenclature, appearance: Appearance) => void }) {
-  const [kind, setKind] = useState<"series" | "item">("series");
+  const kind = "series" as "series" | "item";
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("Mangá");
   const [extra, setExtra] = useState("");
   const [nomenclature, setNomenclature] = useState<Nomenclature>("Volume");
   const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Adicionar ao fichário</DialogTitle><DialogDescription className="sr-only">Cadastrar série ou item avulso</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; onAdd(kind, title.trim(), category, extra.trim(), nomenclature, appearance); setTitle(""); setExtra(""); onOpenChange(false); }}>
-    <div className="space-y-2"><Label>Tipo</Label><Select value={kind} onValueChange={(v) => { setKind(v as "series" | "item"); setExtra(""); }}><SelectTrigger aria-label="Tipo"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="series">Série / coleção</SelectItem><SelectItem value="item">Item avulso</SelectItem></SelectContent></Select></div>
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Nova ficha</DialogTitle><DialogDescription className="sr-only">Cadastrar série ou item avulso</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; onAdd(kind, title.trim(), category, extra.trim(), nomenclature, appearance); setTitle(""); setExtra(""); onOpenChange(false); }}>
     <div className="space-y-2"><Label htmlFor="title">Título</Label><Input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Dragon Ball" /></div>
     <div className="space-y-2"><Label>Categoria</Label><Select value={category} onValueChange={(v) => { setCategory(v as Category); setNomenclature(v === "HQ" || v === "Revista" ? "Edição" : "Volume"); }}><SelectTrigger aria-label="Categoria"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
     {kind === "series" && <NomenclatureField value={nomenclature} onChange={setNomenclature} />}
