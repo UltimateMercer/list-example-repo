@@ -25,10 +25,10 @@ export function HoldRow({ label, note, checked, onToggle }: { label: string; not
     onContextMenu={(e) => e.preventDefault()}>
     <span className="hold-fill absolute inset-0 origin-left bg-current/10" />
     <span className={cn("relative flex size-6 shrink-0 items-center justify-center rounded-[3px] border-[1.5px] border-current", checked && "bg-current")}>
-      {checked && <Check className="size-4 text-paper" />}
+      {checked && <Check className="check-pop size-4 text-paper" />}
     </span>
     <span className={cn("relative min-w-0 flex-1 break-words text-sm", checked && "opacity-50")}>
-      <span className={checked ? "line-through" : ""}>{label}</span>
+      <span className={cn("strike", checked && "is-struck")}>{label}</span>
       {note && <span className="mt-1 block text-xs opacity-60">{note}</span>}
     </span>
   </Button>;
@@ -69,14 +69,14 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const current = cards[index];
   if (!current) return null;
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
-    <div className="relative min-h-0 flex-1 touch-pan-y mr-4 mb-4"
+    <div className="relative min-h-0 flex-1 touch-pan-y mb-6"
       onPointerDown={(e) => { start.current = { x: e.clientX, y: e.clientY }; }}
       onPointerMove={(e) => { if (!start.current) return; const x = e.clientX - start.current.x; const y = e.clientY - start.current.y; if (Math.abs(x) > Math.abs(y) && Math.abs(x) > 10) setDx(x); }}
       onPointerUp={() => { if (Math.abs(dx) > 80) go(dx < 0 ? 1 : -1); start.current = null; setDx(0); }}
       onPointerCancel={() => { start.current = null; setDx(0); }}
       onPointerLeave={() => { start.current = null; setDx(0); }}>
-      {[3, 2, 1].filter((o) => o < Math.max(n, 3)).map((o) => <div key={o} aria-hidden className="absolute inset-0 rounded-sm border border-border bg-card shadow-[0_4px_12px_-6px_oklch(0_0_0/0.3)]" style={{ transform: `translate(${o * 5}px, ${o * 6}px) rotate(${o % 2 ? 0.6 * o : -0.5 * o}deg)`, opacity: 1 - o * 0.12 }} />)}
-      <div key={current.id} className={cn("relative h-full", !dx && "transition-transform motion-reduce:transition-none")} style={{ transform: `translateX(${dx}px) rotate(${dx / 40}deg)` }}>{render(current)}</div>
+      {[2, 1].filter((o) => o < n).map((o) => { const c = cards[(index + o) % n]!; return <div key={`${o}-${c.id}`} aria-hidden inert className="pointer-events-none absolute inset-0" style={{ transform: `translateY(${o * 10}px) scale(${1 - o * 0.035})`, transformOrigin: "50% 100%", filter: `brightness(${1 - o * 0.04})` }}>{render(c)}</div>; })}
+      <div key={current.id} className={cn("relative h-full", !dx && "transition-transform motion-reduce:transition-none")} style={{ transform: `translateX(${dx}px) rotate(${dx / 60}deg)` }}>{render(current)}</div>
     </div>
     <div className="flex shrink-0 items-center justify-center gap-6">
       <Button variant="ghost" size="icon" aria-label="Anterior" onClick={() => go(-1)} disabled={n < 2}><ChevronLeft /></Button>

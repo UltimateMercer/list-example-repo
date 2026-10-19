@@ -57,7 +57,7 @@ function Index() {
       <form className="mt-3 flex items-center gap-2 px-3" onSubmit={(e) => { e.preventDefault(); const t = newItem.trim(); if (!t) return; setData((d) => ({ ...d, items: [...d.items, { id: uid(), title: t, category: "Livro" as Category }] })); setNewItem(""); }}><Plus className="size-4 shrink-0 opacity-60" /><input aria-label="Novo item avulso" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Adicionar item…" className="min-w-0 flex-1 border-b border-current/25 bg-transparent py-2 text-sm outline-none placeholder:text-current/40 focus:border-current" /></form>
     </Ficha>;
   };
-  return <main className="mx-auto flex h-dvh max-w-2xl flex-col overflow-hidden px-5 pb-4 pt-5 sm:px-8 sm:pt-8">
+  return <main className="mx-auto flex h-dvh max-w-xl flex-col overflow-hidden px-5 pb-4 pt-5 sm:px-8 sm:pt-8">
     <header className="mb-4 shrink-0">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-medium sm:text-3xl">Faltantes<span className="text-muted-foreground">.</span></h1>
