@@ -75,7 +75,7 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
       onPointerUp={() => { if (Math.abs(dx) > 80) go(dx < 0 ? 1 : -1); start.current = null; setDx(0); }}
       onPointerCancel={() => { start.current = null; setDx(0); }}
       onPointerLeave={() => { start.current = null; setDx(0); }}>
-      {[2, 1].filter((o) => o < n).map((o) => { const c = cards[(index + o) % n]; return <div key={`${o}-${c.id}`} aria-hidden inert className="pointer-events-none absolute inset-0" style={{ transform: `translateY(${o * 10}px) scale(${1 - o * 0.035})`, transformOrigin: "50% 100%", filter: `brightness(${1 - o * 0.04})` }}>{render(c)}</div>; })}
+      {[2, 1].filter((o) => o < n).map((o) => { const c = cards[(index + o) % n]!; return <div key={`${o}-${c.id}`} aria-hidden inert className="pointer-events-none absolute inset-0" style={{ transform: `translateY(${o * 10}px) scale(${1 - o * 0.035})`, transformOrigin: "50% 100%", filter: `brightness(${1 - o * 0.04})` }}>{render(c)}</div>; })}
       <div key={current.id} className={cn("relative h-full", !dx && "transition-transform motion-reduce:transition-none")} style={{ transform: `translateX(${dx}px) rotate(${dx / 60}deg)` }}>{render(current)}</div>
     </div>
     <div className="flex shrink-0 items-center justify-center gap-6">
