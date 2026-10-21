@@ -219,3 +219,17 @@
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 }
+
+/* Chamfer + flip card kit */
+@utility chamfer {
+  --c: 16px; --tl: 0px; --tr: 0px; --br: 0px; --bl: 0px;
+  clip-path: polygon(var(--tl) 0, calc(100% - var(--tr)) 0, 100% var(--tr), 100% calc(100% - var(--br)), calc(100% - var(--br)) 100%, var(--bl) 100%, 0 calc(100% - var(--bl)), 0 var(--tl));
+}
+@utility chamfer-br { --br: var(--c); }
+@utility chamfer-bl { --bl: var(--c); }
+@utility chamfer-lg { --c: 28px; }
+@utility flip-scene { perspective: 1600px; }
+@utility flip-inner { transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+@utility flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+@utility flip-back { transform: rotateY(180deg); }
+@utility flipped { transform: rotateY(180deg); }
