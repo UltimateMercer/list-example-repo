@@ -125,7 +125,7 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const layers = Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!);
   const ease = "transform 300ms cubic-bezier(.22,.8,.3,1), filter 300ms, opacity 300ms";
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
-    <div className="relative min-h-0 flex-1 touch-pan-y mb-6 select-none"
+    <div className="relative min-h-0 flex-1 touch-pan-y mb-8 mr-7 select-none"
       onPointerDown={(e) => { if (busy.current) return; start.current = { x: e.clientX, y: e.clientY, t: Date.now(), axis: null, id: e.pointerId }; }}
       onPointerMove={(e) => {
         const s = start.current; if (!s) return;
@@ -145,14 +145,14 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
         // while dragging, cards behind rise toward the front
         const p = isTop ? Math.min(1, Math.abs(dx) / width()) : fly ? 1 : 0;
         const d = Math.max(0, o - p);
-        let transform = `translateY(${d * 10}px) scale(${1 - d * 0.035})`;
+        let transform = `translate(${d * 12}px, ${d * 12}px) scale(${1 - d * 0.02})`;
         let z = 10 - o;
         if (isTop) transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
         if (isFly) { transform = `translateX(${fly.dir * width() * 1.15}px) rotate(${fly.dir * 12}deg)`; z = 20; }
         if (enter === c.id) { transform = `translateX(${-width() * 1.15}px) rotate(-12deg)`; }
         return <div key={c.id} aria-hidden={!isTop} inert={!isTop}
           className={cn("absolute inset-0", !isTop && "pointer-events-none")}
-          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "50% 100%", filter: `brightness(${1 - d * 0.04})`,
+          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "0 0", filter: `brightness(${1 - d * 0.04})`,
             transition: (dragging && isTop) || enter === c.id ? "none" : ease }}>
           {render(c)}
         </div>;
