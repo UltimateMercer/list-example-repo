@@ -34,20 +34,56 @@ export function HoldRow({ label, note, checked, onToggle }: { label: string; not
   </Button>;
 }
 
-export function Ficha({ title, category, summary, children, appearance = DEFAULT_APPEARANCE, onEdit, big, actions }: {
-  title: string; category: string; summary: string; children: ReactNode; actions?: ReactNode; appearance?: Appearance | undefined; onEdit: () => void; big?: boolean;
+export function Ficha({ title, category, summary, children, appearance = DEFAULT_APPEARANCE, onEdit, big, actions, count }: {
+  title: string; category: string; summary: string; children: ReactNode; actions?: ReactNode; appearance?: Appearance | undefined; onEdit: () => void; big?: boolean; count?: number;
 }) {
-  return <section data-paper={appearance.paper} data-ink={appearance.ink} className={cn("ficha relative flex flex-col overflow-hidden rounded-sm border border-paper-border bg-paper p-5 text-paper-ink sm:p-7", big && "h-full shadow-[0_10px_30px_-12px_oklch(0_0_0/0.35)]")}>
-    <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-xs uppercase opacity-60">{category}</span>
-        <Button variant="ghost" size="icon" className="size-8 text-inherit hover:bg-current/10 hover:text-inherit" aria-label={`Editar ${title}`} title="Editar ficha" onClick={onEdit}><Settings2 /></Button>
+  const [flipped, setFlipped] = useState(false);
+  const gear = <Button variant="ghost" size="icon" className="size-8 text-inherit hover:bg-current/10 hover:text-inherit" aria-label={`Editar ${title}`} title="Editar ficha" onClick={onEdit}><Settings2 /></Button>;
+  const face = "ficha relative flex h-full flex-col overflow-hidden bg-paper p-5 text-paper-ink sm:p-7";
+  if (!big) {
+    return <div data-paper={appearance.paper} data-ink={appearance.ink} className="chamfer chamfer-lg chamfer-br bg-paper-border p-px">
+      <section className={cn(face, "chamfer chamfer-lg chamfer-br")}>
+        <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
+          <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs uppercase opacity-60">{category}</span>{gear}</div>
+          <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs opacity-60">{summary}</p>{actions}</div>
+        </header>
+        <div className="relative min-h-0">{children}</div>
+      </section>
+    </div>;
+  }
+  const flip = () => setFlipped((f) => !f);
+  return <div data-paper={appearance.paper} data-ink={appearance.ink} className="flip-scene h-full w-full">
+    <div className={cn("flip-inner relative h-full w-full", flipped && "flipped")}>
+      <div className="flip-face chamfer chamfer-lg chamfer-br absolute inset-0 bg-paper-border p-px" aria-hidden={flipped} inert={flipped}>
+        <section className={cn(face, "chamfer chamfer-lg chamfer-br")}>
+          <div className="flex items-center justify-between gap-2"><span className="text-xs uppercase opacity-60">{category}</span>{gear}</div>
+          <div className="flex flex-1 flex-col justify-center">
+            <h2 className="break-words font-display text-3xl font-medium sm:text-4xl">{title}</h2>
+            <div className="mt-6 border-t border-current/25 pt-5">
+              {count !== undefined && <p className="font-display text-6xl font-medium leading-none">{String(count).padStart(2, "0")}<span className="ml-2 text-sm font-normal opacity-60">faltantes</span></p>}
+              <p className="mt-3 text-xs opacity-60">{summary}</p>
+            </div>
+          </div>
+          <div className="pr-10"><Button variant="outline" size="sm" className="border-current/40 bg-transparent text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}>Ver itens ↻</Button></div>
+          <button type="button" onClick={flip} aria-label="Virar ficha" title="Virar ficha"
+            className="absolute bottom-0 right-0 flex size-14 items-end justify-end bg-gradient-to-tl from-paper-ink/80 from-50% to-transparent to-50% p-1.5 text-xs text-paper transition-transform hover:scale-110">↻</button>
+        </section>
       </div>
-      <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs opacity-60">{summary}</p>{actions}</div>
-    </header>
-    <div className={cn("relative min-h-0", big && "scrollbar-none flex-1 overflow-y-auto overscroll-contain")}>{children}</div>
-  </section>;
+      <div className="flip-face flip-back chamfer chamfer-lg chamfer-bl absolute inset-0 bg-paper-border p-px" aria-hidden={!flipped} inert={!flipped}>
+        <section className={cn(face, "chamfer chamfer-lg chamfer-bl")}>
+          <header className="relative mb-3 shrink-0 border-b border-current/25 pb-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <Button variant="ghost" size="sm" className="-ml-2 text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}><ChevronLeft /> Capa</Button>
+              {actions}
+            </div>
+            <h2 className="break-words font-display text-lg font-medium">{title}</h2>
+          </header>
+          <div className="scrollbar-none relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">{children}</div>
+        </section>
+      </div>
+    </div>
+  </div>;
 }
 
 export function StackView<T extends { id: string }>({ cards, index, setIndex, render }: {
