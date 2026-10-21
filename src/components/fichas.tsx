@@ -66,8 +66,6 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
             </div>
           </div>
           <div className="pr-10"><Button variant="outline" size="sm" className="border-current/40 bg-transparent text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}>Ver itens ↻</Button></div>
-          <button type="button" onClick={flip} aria-label="Virar ficha" title="Virar ficha"
-            className="absolute bottom-0 right-0 flex size-14 items-end justify-end bg-gradient-to-tl from-paper-ink/80 from-50% to-transparent to-50% p-1.5 text-xs text-paper transition-transform hover:scale-110">↻</button>
         </section>
       </div>
       <div className="flip-face flip-back chamfer chamfer-lg chamfer-bl absolute inset-0 bg-paper-border p-px" aria-hidden={!flipped} inert={!flipped}>
@@ -97,20 +95,13 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const busy = useRef(false);
   const n = cards.length;
   const width = () => (typeof window === "undefined" ? 400 : Math.min(window.innerWidth, 520));
-  const go = (d: number) => {
+  const go = (d: number, dir?: number) => {
     if (n < 2 || busy.current) return;
     busy.current = true;
-    if (d > 0) {
-      // current card slides out, then tucks behind the pile
-      setFly({ id: cards[index]!.id, dir: dx < 0 || dx === 0 ? -1 : 1 });
-      setTimeout(() => { setIndex((index + 1) % n); setFly(null); setDx(0); busy.current = false; }, 260);
-    } else {
-      // previous card comes from the back of the pile to the front
-      const prev = (index - 1 + n) % n;
-      setEnter(cards[prev]!.id); setIndex(prev); setDx(0);
-      requestAnimationFrame(() => requestAnimationFrame(() => setEnter(null)));
-      setTimeout(() => { busy.current = false; }, 320);
-    }
+    // same motion both ways: front card slides out to the side and tucks behind the pile
+    const side = dir ?? (dx !== 0 ? Math.sign(dx) : d > 0 ? -1 : 1);
+    setFly({ id: cards[index]!.id, dir: side });
+    setTimeout(() => { setIndex((index + d + n) % n); setFly(null); setDx(0); busy.current = false; }, 260);
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -134,7 +125,7 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const layers = Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!);
   const ease = "transform 300ms cubic-bezier(.22,.8,.3,1), filter 300ms, opacity 300ms";
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
-    <div className="relative min-h-0 flex-1 touch-pan-y mb-6 select-none"
+    <div className="relative min-h-0 flex-1 touch-pan-y mb-8 mr-7 select-none"
       onPointerDown={(e) => { if (busy.current) return; start.current = { x: e.clientX, y: e.clientY, t: Date.now(), axis: null, id: e.pointerId }; }}
       onPointerMove={(e) => {
         const s = start.current; if (!s) return;
@@ -154,14 +145,14 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
         // while dragging, cards behind rise toward the front
         const p = isTop ? Math.min(1, Math.abs(dx) / width()) : fly ? 1 : 0;
         const d = Math.max(0, o - p);
-        let transform = `translateY(${d * 10}px) scale(${1 - d * 0.035})`;
+        let transform = `translate(${d * 12}px, ${d * 12}px) scale(${1 - d * 0.02})`;
         let z = 10 - o;
         if (isTop) transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
         if (isFly) { transform = `translateX(${fly.dir * width() * 1.15}px) rotate(${fly.dir * 12}deg)`; z = 20; }
         if (enter === c.id) { transform = `translateX(${-width() * 1.15}px) rotate(-12deg)`; }
         return <div key={c.id} aria-hidden={!isTop} inert={!isTop}
           className={cn("absolute inset-0", !isTop && "pointer-events-none")}
-          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "50% 100%", filter: `brightness(${1 - d * 0.04})`,
+          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "0 0", filter: `brightness(${1 - d * 0.04})`,
             transition: (dragging && isTop) || enter === c.id ? "none" : ease }}>
           {render(c)}
         </div>;
