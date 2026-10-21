@@ -66,8 +66,6 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
             </div>
           </div>
           <div className="pr-10"><Button variant="outline" size="sm" className="border-current/40 bg-transparent text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}>Ver itens ↻</Button></div>
-          <button type="button" onClick={flip} aria-label="Virar ficha" title="Virar ficha"
-            className="absolute bottom-0 right-0 flex size-14 items-end justify-end bg-gradient-to-tl from-paper-ink/80 from-50% to-transparent to-50% p-1.5 text-xs text-paper transition-transform hover:scale-110">↻</button>
         </section>
       </div>
       <div className="flip-face flip-back chamfer chamfer-lg chamfer-bl absolute inset-0 bg-paper-border p-px" aria-hidden={!flipped} inert={!flipped}>
@@ -97,20 +95,13 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const busy = useRef(false);
   const n = cards.length;
   const width = () => (typeof window === "undefined" ? 400 : Math.min(window.innerWidth, 520));
-  const go = (d: number) => {
+  const go = (d: number, dir?: number) => {
     if (n < 2 || busy.current) return;
     busy.current = true;
-    if (d > 0) {
-      // current card slides out, then tucks behind the pile
-      setFly({ id: cards[index]!.id, dir: dx < 0 || dx === 0 ? -1 : 1 });
-      setTimeout(() => { setIndex((index + 1) % n); setFly(null); setDx(0); busy.current = false; }, 260);
-    } else {
-      // previous card comes from the back of the pile to the front
-      const prev = (index - 1 + n) % n;
-      setEnter(cards[prev]!.id); setIndex(prev); setDx(0);
-      requestAnimationFrame(() => requestAnimationFrame(() => setEnter(null)));
-      setTimeout(() => { busy.current = false; }, 320);
-    }
+    // same motion both ways: front card slides out to the side and tucks behind the pile
+    const side = dir ?? (dx !== 0 ? Math.sign(dx) : d > 0 ? -1 : 1);
+    setFly({ id: cards[index]!.id, dir: side });
+    setTimeout(() => { setIndex((index + d + n) % n); setFly(null); setDx(0); busy.current = false; }, 260);
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
