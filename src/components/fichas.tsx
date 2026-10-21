@@ -145,7 +145,7 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
         // while dragging, cards behind rise toward the front
         const p = isTop ? Math.min(1, Math.abs(dx) / width()) : fly ? 1 : 0;
         const d = Math.max(0, o - p);
-        let transform = `translate(${d * 22}px, ${d * 18}px) scale(${1 - d * 0.015})`;
+        let transform = `translate(${d * 20}px, ${d * 20}px)`;
         let z = 10 - o;
         if (isTop) transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
         if (isFly) { transform = `translateX(${fly.dir * width() * 1.15}px) rotate(${fly.dir * 12}deg)`; z = 20; }
