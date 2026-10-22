@@ -50,7 +50,7 @@ export default function Index() {
     </Ficha>;
   };
   return <main className="flex h-dvh w-full flex-col overflow-x-clip overflow-y-hidden px-5 pb-4 pt-5 sm:px-8 sm:pt-8">
-    <header className="mb-4 shrink-0">
+    <header className="mx-auto mb-4 w-full max-w-md shrink-0">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-medium sm:text-3xl">Faltantes<span className="text-muted-foreground">.</span></h1>
         <div className="flex items-center gap-1">
@@ -63,7 +63,7 @@ export default function Index() {
       </div>
       <div className="mt-5 flex items-center justify-between border-b border-border pb-4 text-xs text-muted-foreground"><span>Meu fichário</span><span>{data.series.reduce((n, s) => n + s.missing.length, 0) + data.items.filter((i) => !i.found).length} faltantes · {String(allCards.length).padStart(2, "0")} fichas</span></div>
     </header>
-    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} render={(card) => render(card, true)} /> : <div className="scrollbar-none min-h-0 flex-1 space-y-6 overflow-y-auto">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
+    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} render={(card) => render(card, true)} /> : <div className="scrollbar-none mx-auto min-h-0 w-full max-w-md flex-1 space-y-6 overflow-y-auto">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
     <Sheet open={indexOpen} onOpenChange={setIndexOpen}><SheetContent side="left" className="sheet-surface flex w-80 flex-col px-5"><SheetHeader className="px-0"><SheetTitle>Índice</SheetTitle></SheetHeader><Input aria-label="Pular para ficha" value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." /><div className="flex-1 overflow-y-auto">{allCards.filter((c) => matches(c, indexQ.trim().toLowerCase())).map((c) => <Button key={c.id} variant="ghost" className="h-auto w-full justify-between rounded-none border-b py-4 whitespace-normal text-left" onClick={() => jump(c.id)}><span className="min-w-0 break-words">{c.series?.title ?? "Avulsos"}</span><ArrowUpRight className="shrink-0" /></Button>)}</div></SheetContent></Sheet>
     <AddDialog open={adding} onOpenChange={setAdding} onAdd={(kind, title, category, extra, nomenclature, appearance) => {
       if (kind === "series") {
