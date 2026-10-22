@@ -152,7 +152,8 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
         if (enter === c.id) { transform = `translateX(${-width() * 1.15}px) rotate(-12deg)`; }
         return <div key={c.id} aria-hidden={!isTop} inert={!isTop}
           className={cn("absolute inset-0", !isTop && "pointer-events-none")}
-          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "0 0", filter: `brightness(${1 - d * 0.04})`,
+          style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "0 0",
+            filter: `brightness(${1 - d * 0.04}) drop-shadow(2px 3px 4px color-mix(in oklab, var(--foreground) 16%, transparent)) drop-shadow(5px 8px 14px color-mix(in oklab, var(--foreground) 10%, transparent))`,
             transition: (dragging && isTop) || enter === c.id ? "none" : ease }}>
           {render(c)}
         </div>;
