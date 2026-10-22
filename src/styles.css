@@ -1,6 +1,4 @@
-@import "tailwindcss" source(none);
-@source "../src";
-@import "tw-animate-css";
+@import "tailwindcss";
 
 @font-face {
   font-family: "Paper Mono";
@@ -9,8 +7,6 @@
   font-weight: 100 800;
   font-display: swap;
 }
-
-@custom-variant dark (&:is(.dark *));
 
 /*
  * Design system definition.
@@ -26,7 +22,7 @@
  * 2. Register it in @theme inline as --color-<name>: var(--<name>)
  */
 
-@theme inline {
+:root {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -107,7 +103,7 @@
   --sidebar-ring: oklch(0.6 0.06 60);
 }
 
-@theme inline {
+:root {
   --color-paper: var(--paper);
   --color-paper-ink: var(--paper-ink);
   --color-paper-border: var(--paper-border);
@@ -145,17 +141,15 @@
 [data-ink="blue"] { --paper-ink: var(--ink-blue); }
 [data-ink="red"] { --paper-ink: var(--ink-red); }
 [data-ink="light"] { --paper-ink: var(--ink-light); }
-@utility ficha {
-  box-shadow: var(--shadow-paper);
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: url("./assets/paper-grain.png");
-    opacity: 0.09;
-    mix-blend-mode: multiply;
-    pointer-events: none;
-  }
+.ficha { box-shadow: var(--shadow-paper); }
+.ficha::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("./assets/paper-grain.png");
+  opacity: 0.09;
+  mix-blend-mode: multiply;
+  pointer-events: none;
 }
 .hold-row { user-select: none; -webkit-touch-callout: none; }
 .hold-fill { transform: scaleX(0); }
@@ -215,21 +209,14 @@
   }
 }
 
-@utility scrollbar-none {
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-}
-
 /* Chamfer + flip card kit */
-@utility chamfer {
-  --c: 16px; --tl: 0px; --tr: 0px; --br: 0px; --bl: 0px;
-  clip-path: polygon(var(--tl) 0, calc(100% - var(--tr)) 0, 100% var(--tr), 100% calc(100% - var(--br)), calc(100% - var(--br)) 100%, var(--bl) 100%, 0 calc(100% - var(--bl)), 0 var(--tl));
-}
-@utility chamfer-br { --br: var(--c); }
-@utility chamfer-bl { --bl: var(--c); }
-@utility chamfer-lg { --c: 44px; }
-@utility flip-scene { perspective: 1600px; }
-@utility flip-inner { transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
-@utility flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-@utility flip-back { transform: rotateY(180deg); }
-@utility flipped { transform: rotateY(180deg); }
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.chamfer { --c: 16px; --tl: 0px; --tr: 0px; --br: 0px; --bl: 0px; clip-path: polygon(var(--tl) 0, calc(100% - var(--tr)) 0, 100% var(--tr), 100% calc(100% - var(--br)), calc(100% - var(--br)) 100%, var(--bl) 100%, 0 calc(100% - var(--bl)), 0 var(--tl)); }
+.chamfer-br { --br: var(--c); }
+.chamfer-bl { --bl: var(--c); }
+.chamfer-lg { --c: 44px; }
+.flip-scene { perspective: 1600px; }
+.flip-inner { transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-back, .flipped { transform: rotateY(180deg); }

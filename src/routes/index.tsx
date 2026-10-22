@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+"use client";
+
 import { useState } from "react";
 import { Plus, Trash2, ArrowDownUp, Layers, List, BookOpen, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,20 +11,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES, DEFAULT_APPEARANCE, type Appearance, type Category, type Data, type Series, type Nomenclature, type PaperColor, type InkColor, toggleMissing, uid, useData, volumeLabel } from "@/lib/store";
 
-export const Route = createFileRoute("/")({
-  head: () => ({ meta: [
-    { title: "Faltantes — seu fichário de coleções" },
-    { name: "description", content: "Suas séries e itens avulsos em fichas de papel. Consulte e marque o que falta na sua coleção, com dados salvos no dispositivo." },
-    { property: "og:title", content: "Faltantes — seu fichário de coleções" },
-    { property: "og:description", content: "Organize mangás, livros, revistas e avulsos em um fichário pessoal de itens faltantes." },
-    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
-  ] }), component: Index,
-});
 
 type Card = { id: string; series?: Series };
 const LOOSE_ID = "loose-items";
 
-function Index() {
+export default function Index() {
   const [data, setData, loaded] = useData();
   const q = "";
   const [sort, setSort] = useState<"order" | "missing">("order");
