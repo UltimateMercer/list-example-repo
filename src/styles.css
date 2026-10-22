@@ -212,7 +212,7 @@
   }
 
   body {
-    overflow-x: visible;
+    overflow-x: hidden;
     font-family: var(--font-sans);
     letter-spacing: 0;
     background-color: var(--color-background);

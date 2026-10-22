@@ -34,8 +34,38 @@ export interface Data {
   initialized?: boolean;
 }
 
-const KEY = "faltantes-data-v1";
+const DB_NAME = "faltantes-db";
+const STORE_NAME = "data";
+const DATA_KEY = "current";
 const empty: Data = { series: [], items: [] };
+
+function readData(): Promise<Data | null> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
+    request.onsuccess = () => {
+      const transaction = request.result.transaction(STORE_NAME, "readonly");
+      const get = transaction.objectStore(STORE_NAME).get(DATA_KEY);
+      get.onsuccess = () => resolve((get.result as Data | undefined) ?? null);
+      get.onerror = () => reject(get.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function writeData(data: Data): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
+    request.onsuccess = () => {
+      const transaction = request.result.transaction(STORE_NAME, "readwrite");
+      transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
 
 export const HOLD_DURATION = 700;
 export function volumeLabel(s: Pick<Series, "title" | "nomenclature">, volume: number) {
@@ -69,18 +99,19 @@ export function useData() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      const parsed = raw ? JSON.parse(raw) : empty;
-      setData(initializeData({ ...empty, ...parsed }));
-    } catch {
-      setData(initializeData());
-    }
-    setLoaded(true);
+    let active = true;
+    readData().then((saved) => {
+      if (active) setData(initializeData({ ...empty, ...(saved ?? {}) }));
+    }).catch(() => {
+      if (active) setData(initializeData());
+    }).finally(() => {
+      if (active) setLoaded(true);
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
-    if (loaded) localStorage.setItem(KEY, JSON.stringify(data));
+    if (loaded) void writeData(data).catch(() => undefined);
   }, [data, loaded]);
 
   return [data, setData, loaded] as const;

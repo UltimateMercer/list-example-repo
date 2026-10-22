@@ -157,7 +157,10 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
     else setDx(0);
   };
   const depth = Math.min(n, 3);
-  const layers = Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!);
+  const swipeTarget = dx < 0 ? (index + 1) % n : (index - 1 + n) % n;
+  const layers = dx === 0
+    ? Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!)
+    : [cards[index]!, cards[swipeTarget]!, ...Array.from({ length: Math.max(0, depth - 2) }, (_, o) => cards[(swipeTarget + o + 1) % n]!)];
   const ease = "transform 300ms cubic-bezier(.22,.8,.3,1), filter 300ms, opacity 300ms";
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
     <div className="relative mx-auto mb-11 min-h-0 w-full max-w-xl flex-1 touch-pan-y select-none overflow-visible"
