@@ -227,7 +227,7 @@
 }
 @utility chamfer-br { --br: var(--c); }
 @utility chamfer-bl { --bl: var(--c); }
-@utility chamfer-lg { --c: 28px; }
+@utility chamfer-lg { --c: 44px; }
 @utility flip-scene { perspective: 1600px; }
 @utility flip-inner { transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
 @utility flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }

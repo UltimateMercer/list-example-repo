@@ -41,8 +41,8 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
   const gear = <Button variant="ghost" size="icon" className="size-8 text-inherit hover:bg-current/10 hover:text-inherit" aria-label={`Editar ${title}`} title="Editar ficha" onClick={onEdit}><Settings2 /></Button>;
   const face = "ficha relative flex h-full flex-col overflow-hidden bg-paper p-5 text-paper-ink sm:p-7";
   if (!big) {
-    return <div data-paper={appearance.paper} data-ink={appearance.ink} className="chamfer chamfer-lg chamfer-br bg-paper-border p-px">
-      <section className={cn(face, "chamfer chamfer-lg chamfer-br")}>
+    return <div data-paper={appearance.paper} data-ink={appearance.ink} className="chamfer chamfer-lg chamfer-br rounded-2xl">
+      <section className={cn(face, "chamfer chamfer-lg chamfer-br rounded-2xl")}>
         <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
           <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs uppercase opacity-60">{category}</span>{gear}</div>
           <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
@@ -55,8 +55,8 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
   const flip = () => setFlipped((f) => !f);
   return <div data-paper={appearance.paper} data-ink={appearance.ink} className="flip-scene h-full w-full">
     <div className={cn("flip-inner relative h-full w-full", flipped && "flipped")}>
-      <div className="flip-face chamfer chamfer-lg chamfer-br absolute inset-0 bg-paper-border p-px" aria-hidden={flipped} inert={flipped}>
-        <section className={cn(face, "chamfer chamfer-lg chamfer-br")}>
+      <div className="flip-face chamfer chamfer-lg chamfer-br absolute inset-0 rounded-2xl" aria-hidden={flipped} inert={flipped}>
+        <section className={cn(face, "chamfer chamfer-lg chamfer-br rounded-2xl")}>
           <div className="flex items-center justify-between gap-2"><span className="text-xs uppercase opacity-60">{category}</span>{gear}</div>
           <div className="flex flex-1 flex-col justify-center">
             <h2 className="break-words font-display text-3xl font-medium sm:text-4xl">{title}</h2>
@@ -68,8 +68,8 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
           <div className="pr-10"><Button variant="outline" size="sm" className="border-current/40 bg-transparent text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}>Ver itens ↻</Button></div>
         </section>
       </div>
-      <div className="flip-face flip-back chamfer chamfer-lg chamfer-bl absolute inset-0 bg-paper-border p-px" aria-hidden={!flipped} inert={!flipped}>
-        <section className={cn(face, "chamfer chamfer-lg chamfer-bl")}>
+      <div className="flip-face flip-back chamfer chamfer-lg chamfer-bl absolute inset-0 rounded-2xl" aria-hidden={!flipped} inert={!flipped}>
+        <section className={cn(face, "chamfer chamfer-lg chamfer-bl rounded-2xl")}>
           <header className="relative mb-3 shrink-0 border-b border-current/25 pb-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <Button variant="ghost" size="sm" className="-ml-2 text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}><ChevronLeft /> Capa</Button>
