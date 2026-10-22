@@ -212,11 +212,19 @@
   }
 
   body {
+    overflow-x: visible;
     font-family: var(--font-sans);
     letter-spacing: 0;
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+/* Keep overlays opaque so content remains readable over the scrim. */
+.dialog-surface,
+.sheet-surface {
+  background-color: var(--background);
+  opacity: 1;
 }
 
 /* Chamfer + flip card kit */

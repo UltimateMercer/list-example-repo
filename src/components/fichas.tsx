@@ -127,10 +127,16 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const go = (d: number, dir?: number) => {
     if (n < 2 || busy.current) return;
     busy.current = true;
-    // same motion both ways: front card slides out to the side and tucks behind the pile
+    const from = cards[index]!;
+    const nextIndex = (index + d + n) % n;
     const side = dir ?? (dx !== 0 ? Math.sign(dx) : d > 0 ? -1 : 1);
-    setFly({ id: cards[index]!.id, dir: side });
-    setTimeout(() => { setIndex((index + d + n) % n); setFly(null); setDx(0); busy.current = false; }, 260);
+    setFly({ id: from.id, dir: side });
+    setTimeout(() => {
+      setIndex(nextIndex);
+      setFly(null);
+      setDx(0);
+      busy.current = false;
+    }, 260);
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -154,7 +160,7 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const layers = Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!);
   const ease = "transform 300ms cubic-bezier(.22,.8,.3,1), filter 300ms, opacity 300ms";
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
-    <div className="relative min-h-0 flex-1 touch-pan-y mb-11 mr-12 select-none"
+    <div className="relative mx-auto mb-11 min-h-0 w-full max-w-xl flex-1 touch-pan-y select-none overflow-visible"
       onPointerDown={(e) => { if (busy.current) return; start.current = { x: e.clientX, y: e.clientY, t: Date.now(), axis: null, id: e.pointerId }; }}
       onPointerMove={(e) => {
         const s = start.current; if (!s) return;
