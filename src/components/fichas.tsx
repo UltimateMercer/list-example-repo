@@ -119,7 +119,6 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [fly, setFly] = useState<{ id: string; dir: number } | null>(null);
-  const [enter, setEnter] = useState<string | null>(null);
   const start = useRef<{ x: number; y: number; t: number; axis: "x" | "y" | null; id: number } | null>(null);
   const busy = useRef(false);
   const n = cards.length;
@@ -160,10 +159,10 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
   const swipeTarget = dx < 0 ? (index + 1) % n : (index - 1 + n) % n;
   const layers = dx === 0
     ? Array.from({ length: depth }, (_, o) => cards[(index + o) % n]!)
-    : [cards[index]!, cards[swipeTarget]!, ...Array.from({ length: Math.max(0, depth - 2) }, (_, o) => cards[(swipeTarget + o + 1) % n]!)];
+    : [cards[index]!, cards[swipeTarget]!];
   const ease = "transform 300ms cubic-bezier(.22,.8,.3,1), filter 300ms, opacity 300ms";
   return <div className="flex min-h-0 flex-1 flex-col pt-2">
-    <div className="relative mx-auto mb-11 min-h-0 w-full max-w-xl flex-1 touch-pan-y select-none overflow-visible"
+    <div className="relative mx-auto mb-11 min-h-0 w-full max-w-lg flex-1 touch-pan-y select-none overflow-visible"
       onPointerDown={(e) => { if (busy.current) return; start.current = { x: e.clientX, y: e.clientY, t: Date.now(), axis: null, id: e.pointerId }; }}
       onPointerMove={(e) => {
         const s = start.current; if (!s) return;
@@ -187,12 +186,11 @@ export function StackView<T extends { id: string }>({ cards, index, setIndex, re
         let z = 10 - o;
         if (isTop) transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
         if (isFly) { transform = `translateX(${fly.dir * width() * 1.15}px) rotate(${fly.dir * 12}deg)`; z = 20; }
-        if (enter === c.id) { transform = `translateX(${-width() * 1.15}px) rotate(-12deg)`; }
         return <div key={c.id} aria-hidden={!isTop} inert={!isTop}
           className={cn("absolute inset-0", !isTop && "pointer-events-none")}
           style={{ zIndex: z, transform, transformOrigin: o === 0 ? "50% 90%" : "0 0",
             filter: `brightness(${1 - d * 0.04}) drop-shadow(2px 3px 4px color-mix(in oklab, var(--foreground) 16%, transparent)) drop-shadow(5px 8px 14px color-mix(in oklab, var(--foreground) 10%, transparent))`,
-            transition: (dragging && isTop) || enter === c.id ? "none" : ease }}>
+            transition: dragging && isTop ? "none" : ease }}>
           {render(c)}
         </div>;
       })}
