@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,35 @@ export function HoldRow({ label, note, checked, onToggle }: { label: string; not
   </Button>;
 }
 
+const CHAMFER = 44, RADIUS = 16, FILLET = 8;
+function filletPath(w: number, h: number, corner: "br" | "bl") {
+  const c = CHAMFER, R = RADIUS, F = FILLET;
+  const pts: [number, number, number][] = corner === "br"
+    ? [[0, 0, R], [w, 0, R], [w, h - c, F], [w - c, h, F], [0, h, R]]
+    : [[0, 0, R], [w, 0, R], [w, h, R], [c, h, F], [0, h - c, F]];
+  const n = pts.length, f = (v: number) => +v.toFixed(2), out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const [x, y, r] = pts[i]!, [px, py] = pts[(i - 1 + n) % n]!, [nx, ny] = pts[(i + 1) % n]!;
+    const lp = Math.hypot(x - px, y - py), ln = Math.hypot(nx - x, ny - y), t = Math.min(r, lp / 2, ln / 2);
+    const ax = x + ((px - x) / lp) * t, ay = y + ((py - y) / lp) * t, bx = x + ((nx - x) / ln) * t, by = y + ((ny - y) / ln) * t, k = 0.55;
+    out.push(`${i ? "L" : "M"} ${f(ax)} ${f(ay)}`, `C ${f(ax + (x - ax) * k)} ${f(ay + (y - ay) * k)} ${f(bx + (x - bx) * k)} ${f(by + (y - by) * k)} ${f(bx)} ${f(by)}`);
+  }
+  return `path("${out.join(" ")} Z")`;
+}
+
+function Fillet({ corner, className, children }: { corner: "br" | "bl"; className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  const [clip, setClip] = useState<string>();
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const update = () => setClip(filletPath(el.offsetWidth, el.offsetHeight, corner));
+    update();
+    const ro = new ResizeObserver(update); ro.observe(el);
+    return () => ro.disconnect();
+  }, [corner]);
+  return <section ref={ref} className={cn(className, !clip && "rounded-2xl")} style={clip ? { clipPath: clip } : undefined}>{children}</section>;
+}
+
 export function Ficha({ title, category, summary, children, appearance = DEFAULT_APPEARANCE, onEdit, big, actions, count }: {
   title: string; category: string; summary: string; children: ReactNode; actions?: ReactNode; appearance?: Appearance | undefined; onEdit: () => void; big?: boolean; count?: number;
 }) {
@@ -41,22 +70,22 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
   const gear = <Button variant="ghost" size="icon" className="size-8 text-inherit hover:bg-current/10 hover:text-inherit" aria-label={`Editar ${title}`} title="Editar ficha" onClick={onEdit}><Settings2 /></Button>;
   const face = "ficha relative flex h-full flex-col overflow-hidden bg-paper p-5 text-paper-ink sm:p-7";
   if (!big) {
-    return <div data-paper={appearance.paper} data-ink={appearance.ink} className="chamfer chamfer-lg chamfer-br rounded-2xl">
-      <section className={cn(face, "chamfer chamfer-lg chamfer-br rounded-2xl")}>
+    return <div data-paper={appearance.paper} data-ink={appearance.ink} className="">
+      <Fillet corner="br" className={face}>
         <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
           <div className="mb-3 flex items-center justify-between gap-2"><span className="text-xs uppercase opacity-60">{category}</span>{gear}</div>
           <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs opacity-60">{summary}</p>{actions}</div>
         </header>
         <div className="relative min-h-0">{children}</div>
-      </section>
+      </Fillet>
     </div>;
   }
   const flip = () => setFlipped((f) => !f);
   return <div data-paper={appearance.paper} data-ink={appearance.ink} className="flip-scene h-full w-full">
     <div className={cn("flip-inner relative h-full w-full", flipped && "flipped")}>
-      <div className="flip-face chamfer chamfer-lg chamfer-br absolute inset-0 rounded-2xl" aria-hidden={flipped} inert={flipped}>
-        <section className={cn(face, "chamfer chamfer-lg chamfer-br rounded-2xl")}>
+      <div className="flip-face absolute inset-0 rounded-2xl" aria-hidden={flipped} inert={flipped}>
+        <Fillet corner="br" className={face}>
           <div className="flex items-center justify-between gap-2"><span className="text-xs uppercase opacity-60">{category}</span>{gear}</div>
           <div className="flex flex-1 flex-col justify-center">
             <h2 className="break-words font-display text-3xl font-medium sm:text-4xl">{title}</h2>
@@ -66,10 +95,10 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
             </div>
           </div>
           <div className="pr-10"><Button variant="outline" size="sm" className="border-current/40 bg-transparent text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}>Ver itens ↻</Button></div>
-        </section>
+        </Fillet>
       </div>
-      <div className="flip-face flip-back chamfer chamfer-lg chamfer-bl absolute inset-0 rounded-2xl" aria-hidden={!flipped} inert={!flipped}>
-        <section className={cn(face, "chamfer chamfer-lg chamfer-bl rounded-2xl")}>
+      <div className="flip-face flip-back absolute inset-0 rounded-2xl" aria-hidden={!flipped} inert={!flipped}>
+        <Fillet corner="bl" className={face}>
           <header className="relative mb-3 shrink-0 border-b border-current/25 pb-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <Button variant="ghost" size="sm" className="-ml-2 text-inherit hover:bg-current/10 hover:text-inherit" onClick={flip}><ChevronLeft /> Capa</Button>
@@ -78,7 +107,7 @@ export function Ficha({ title, category, summary, children, appearance = DEFAULT
             <h2 className="break-words font-display text-lg font-medium">{title}</h2>
           </header>
           <div className="scrollbar-none relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">{children}</div>
-        </section>
+        </Fillet>
       </div>
     </div>
   </div>;
