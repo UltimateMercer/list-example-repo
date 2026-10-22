@@ -114,6 +114,16 @@
   --font-sans: "Paper Mono", ui-monospace, monospace;
 }
 
+/* Register custom design tokens so Tailwind v4 generates bg-paper and text-paper-ink utilities. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-border: var(--paper-border);
+  --font-display: "Paper Mono", ui-monospace, monospace;
+  --font-mono: "Paper Mono", ui-monospace, monospace;
+  --font-sans: "Paper Mono", ui-monospace, monospace;
+}
+
 /* Saved paper/ink choices resolve locally on each ficha and palette swatch. */
 :root {
   --paper: oklch(0.995 0 0);
