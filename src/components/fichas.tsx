@@ -301,9 +301,9 @@ export function Ficha({
               <h2 className="break-words font-display text-3xl font-medium sm:text-4xl">{title}</h2>
               <div className="mt-6 border-t border-current/25 pt-5">
                 {count !== undefined && (
-                  <p className="count-display flex items-baseline gap-3 text-7xl font-medium leading-none sm:text-8xl">
-                    <CountUp value={count} />
-                    <span className="ml-3 inline-block align-baseline whitespace-nowrap text-sm font-normal opacity-60">faltantes</span>
+                  <p className="flex items-baseline gap-3 text-7xl font-medium leading-none sm:text-8xl">
+                    <span className="count-display"><CountUp value={count} /></span>
+                    <span className="whitespace-nowrap text-sm font-normal opacity-60">faltantes</span>
                   </p>
                 )}
                 <p className="mt-3 text-xs opacity-60">{summary}</p>
@@ -358,11 +358,13 @@ export function StackView<T extends { id: string }>({
   index,
   setIndex,
   render,
+  navigation,
 }: {
   cards: T[];
   index: number;
   setIndex: (n: number) => void;
   render: (c: T) => ReactNode;
+  navigation?: { direction: number; token: number };
 }) {
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -409,6 +411,12 @@ export function StackView<T extends { id: string }>({
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [index, n]);
+
+  useEffect(() => {
+    if (navigation && navigation.token > 0) {
+      go(navigation.direction);
+    }
+  }, [navigation?.token]);
 
   const current = cards[index];
   if (!current) return null;
