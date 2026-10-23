@@ -159,7 +159,8 @@
 [data-ink="blue"] { --paper-ink: var(--ink-blue); }
 [data-ink="red"] { --paper-ink: var(--ink-red); }
 [data-ink="light"] { --paper-ink: var(--ink-light); }
-.count-display { font-family: "Geist Pixel Circle", "Paper Mono", ui-monospace, monospace; letter-spacing: -0.06em; }
+.count-display {
+  font-family: var(--font-geist-pixel-circle), monospace; font-family: "Geist Pixel Circle", "Paper Mono", ui-monospace, monospace; letter-spacing: -0.06em; }
 .ficha { box-shadow: var(--shadow-paper); }
 .ficha::before {
   content: "";

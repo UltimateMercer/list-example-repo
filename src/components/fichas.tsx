@@ -216,6 +216,8 @@ export function Ficha({
   children,
   appearance = DEFAULT_APPEARANCE,
   onEdit,
+  editContent,
+  startEditing,
   big,
   actions,
   count,
@@ -229,8 +231,11 @@ export function Ficha({
   onEdit: () => void;
   big?: boolean;
   count?: number;
+  editContent?: ReactNode;
+  startEditing?: boolean;
 }) {
   const [flipped, setFlipped] = useState(false);
+  const [editing, setEditing] = useState(startEditing ?? false);
   const frontBtnRef = useRef<HTMLButtonElement>(null);
   const backBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -256,7 +261,10 @@ export function Ficha({
       className="size-8 text-inherit hover:bg-current/10 hover:text-inherit"
       aria-label={`Editar ${title}`}
       title="Editar ficha"
-      onClick={onEdit}
+      onClick={() => {
+        setEditing(true);
+        onEdit();
+      }}
     >
       <Settings2 />
     </Button>
@@ -320,6 +328,11 @@ export function Ficha({
                 Ver itens ↻
               </Button>
             </div>
+            {editing && editContent && (
+              <div className="absolute inset-0 z-10 overflow-y-auto bg-paper p-5 text-paper-ink sm:p-7">
+                {editContent}
+              </div>
+            )}
           </Fillet>
         </div>
         <div
@@ -385,7 +398,7 @@ export function StackView<T extends { id: string }>({
     busy.current = true;
     const from = cards[index]!;
     const nextIndex = (index + d + n) % n;
-    const side = dir ?? (dx !== 0 ? Math.sign(dx) : d > 0 ? -1 : 1);
+    const side = dir ?? (dx !== 0 ? Math.sign(dx) : d < 0 ? -1 : 1);
     setFly({ id: from.id, dir: side, d });
     setTimeout(() => {
       setIndex(nextIndex);

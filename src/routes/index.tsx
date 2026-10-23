@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CATEGORIES, DEFAULT_APPEARANCE, type Appearance, type Category, type Data, type Series, type Nomenclature, type PaperColor, type InkColor, toggleMissing, uid, useData, volumeLabel } from "@/lib/store";
 
 
-type Card = { id: string; series?: Series };
+type Card = { id: string; series?: Series; draft?: boolean };
 const LOOSE_ID = "loose-items";
+const NEW_ID = "new-ficha";
 
 export default function Index() {
   const [data, setData, loaded] = useData();
@@ -40,7 +41,7 @@ export default function Index() {
   const ord = <T,>(arr: T[], has: (x: T) => boolean) => sort === "missing" ? [...arr.filter((x) => !has(x)), ...arr.filter(has)] : arr;
   const render = (card: Card, big = false) => {
     const s = card.series;
-    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} count={s.missing.length} actions={sortBtn} onEdit={() => setEditId(s.id)}>
+    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} count={s.missing.length} actions={sortBtn} onEdit={() => setEditId(s.id)} editContent={<InlineEdit series={s} onClose={() => setEditId(null)} onUpdate={(patch) => updateSeries(s.id, patch)} onAppearance={(appearance) => updateSeries(s.id, { appearance })} onDelete={() => { if (confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((x) => x.id !== s.id) })); setEditId(null); } }} />}>
       {ord(Array.from({ length: s.total }, (_, k) => k + 1), (v) => !s.missing.includes(v)).map((v) => <HoldRow key={v} label={volumeLabel(s, v)} checked={!s.missing.includes(v)} onToggle={() => setData((d) => ({ ...d, series: d.series.map((x) => x.id === s.id ? { ...x, missing: toggleMissing(x.missing, v) } : x) }))} />)}
     </Ficha>;
     const items = data.items.filter((i) => !q.trim() || "avulsos".includes(q.trim().toLowerCase()) || i.title.toLowerCase().includes(q.trim().toLowerCase()));
@@ -77,7 +78,7 @@ export default function Index() {
         setIdx(data.series.length);
       }
     }} />
-    {editId && <EditDialog key={editId} series={editing} data={data} onClose={() => setEditId(null)} onUpdate={(patch) => editing && updateSeries(editing.id, patch)} onAppearance={(appearance) => editing ? updateSeries(editing.id, { appearance }) : setData((d) => ({ ...d, looseAppearance: appearance }))} onRemoveItem={(id) => setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) }))} onDelete={() => { if (editing && confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((s) => s.id !== editing.id) })); setEditId(null); } }} />}
+
   </main>;
 }
 
@@ -88,6 +89,17 @@ function AppearanceFields({ value, onChange }: { value: Appearance; onChange: (a
 }
 function NomenclatureField({ value, onChange }: { value: Nomenclature; onChange: (v: Nomenclature) => void }) {
   return <div className="space-y-2"><Label>Nomenclatura</Label><Select value={value} onValueChange={(v) => onChange(v as Nomenclature)}><SelectTrigger aria-label="Nomenclatura"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Volume">Volume</SelectItem><SelectItem value="Edição">Edição</SelectItem></SelectContent></Select></div>;
+}
+function InlineEdit({ series, onClose, onUpdate, onAppearance, onDelete }: { series: Series; onClose: () => void; onUpdate: (patch: Partial<Series>) => void; onAppearance: (a: Appearance) => void; onDelete: () => void }) {
+  const appearance = series.appearance ?? DEFAULT_APPEARANCE;
+  return <div className="flex min-h-full flex-col gap-4">
+    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar ficha</h3><Button type="button" variant="ghost" size="sm" onClick={onClose}>Concluir</Button></div>
+    <div className="space-y-2"><Label htmlFor="inline-title">Título</Label><Input id="inline-title" defaultValue={series.title} onBlur={(e) => { if (e.target.value.trim()) onUpdate({ title: e.target.value.trim() }); }} /></div>
+    <NomenclatureField value={series.nomenclature ?? "Volume"} onChange={(nomenclature) => onUpdate({ nomenclature })} />
+    <div className="space-y-2"><Label htmlFor="inline-total">Total de {series.nomenclature === "Edição" ? "edições" : "volumes"}</Label><Input id="inline-total" type="number" min={1} step={1} defaultValue={series.total} onBlur={(e) => { const total = Math.max(1, Math.floor(Number(e.target.value) || series.total)); onUpdate({ total, missing: [...series.missing.filter((v) => v <= total), ...Array.from({ length: Math.max(0, total - series.total) }, (_, k) => series.total + k + 1)] }); }} /></div>
+    <AppearanceFields value={appearance} onChange={onAppearance} />
+    <Button type="button" variant="ghost" className="mt-auto justify-start text-destructive" onClick={onDelete}><Trash2 /> Excluir ficha</Button>
+  </div>;
 }
 function AddDialog({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (kind: "series" | "item", title: string, category: Category, extra: string, nomenclature: Nomenclature, appearance: Appearance) => void }) {
   const kind = "series" as "series" | "item";
