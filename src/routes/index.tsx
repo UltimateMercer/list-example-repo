@@ -27,26 +27,82 @@ export default function Index() {
   const [indexOpen, setIndexOpen] = useState(false);
   const [indexQ, setIndexQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [draftAppearance, setDraftAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const [editId, setEditId] = useState<string | null>(null);
-  const allCards: Card[] = [...(adding ? [{ id: NEW_ID, draft: true } as Card] : []), ...data.series.map((s) => ({ id: s.id, series: s })), { id: LOOSE_ID }];
-  const matches = (card: Card, query: string) => card.series
-    ? card.series.title.toLowerCase().includes(query)
-    : "avulsos".includes(query) || data.items.some((i) => i.title.toLowerCase().includes(query));
+
+  const startAdding = () => {
+    setDraftAppearance(DEFAULT_APPEARANCE);
+    setAdding(true);
+    setIdx(0);
+  };
+
+  const allCards: Card[] = [
+    ...(adding ? [{ id: NEW_ID, draft: true } as Card] : []),
+    ...data.series.map((s) => ({ id: s.id, series: s })),
+    { id: LOOSE_ID },
+  ];
+  const matches = (card: Card, query: string) => {
+    if (card.draft) return true;
+    if (card.series) return card.series.title.toLowerCase().includes(query);
+    return "avulsos".includes(query) || data.items.some((i) => i.title.toLowerCase().includes(query));
+  };
   const cards = allCards.filter((card) => matches(card, q.trim().toLowerCase()));
   const current = Math.min(idx, Math.max(0, cards.length - 1));
-  const editing = data.series.find((s) => s.id === editId);
   const updateSeries = (id: string, patch: Partial<Series>) => setData((d) => ({ ...d, series: d.series.map((s) => s.id === id ? { ...s, ...patch } : s) }));
   const jump = (id: string) => { setMode("stack"); setIdx(allCards.findIndex((c) => c.id === id)); setIndexOpen(false); };
   const sortBtn = <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-inherit hover:bg-current/10 hover:text-inherit" aria-label="Alterar ordenação" onClick={() => setSort(sort === "order" ? "missing" : "order")}><ArrowDownUp className="size-3.5" />{sort === "order" ? "Em ordem" : "Faltantes primeiro"}</Button>;
   const ord = <T,>(arr: T[], has: (x: T) => boolean) => sort === "missing" ? [...arr.filter((x) => !has(x)), ...arr.filter(has)] : arr;
   const render = (card: Card, big = false) => {
-    if (card.draft) return <Ficha title="Nova ficha" category="Criar" summary="Preencha os dados da nova coleção" appearance={DEFAULT_APPEARANCE} big={big} startEditing editContent={<InlineCreate onCancel={() => setAdding(false)} onCreate={(title, category, total, nomenclature, appearance) => { const id = uid(); setData((d) => ({ ...d, series: [{ id, title, category, total, missing: Array.from({ length: total }, (_, k) => k + 1), nomenclature, appearance }, ...d.series] })); setAdding(false); setIdx(0); }} />} onEditingChange={(editing) => { if (!editing) setAdding(false); }} onEdit={() => {}}>{null}</Ficha>;
+    if (card.draft)
+      return (
+        <Ficha
+          title="Nova ficha"
+          category="Criar"
+          summary="Preencha os dados da nova coleção"
+          appearance={draftAppearance}
+          big={big}
+          startEditing
+          editContent={
+            <InlineCreate
+              appearance={draftAppearance}
+              onAppearanceChange={setDraftAppearance}
+              onCancel={() => setAdding(false)}
+              onCreate={(title, category, total, nomenclature, appearance) => {
+                const id = uid();
+                setData((d) => ({
+                  ...d,
+                  series: [
+                    {
+                      id,
+                      title,
+                      category,
+                      total,
+                      missing: Array.from({ length: total }, (_, k) => k + 1),
+                      nomenclature,
+                      appearance,
+                    },
+                    ...d.series,
+                  ],
+                }));
+                setAdding(false);
+                setIdx(0);
+              }}
+            />
+          }
+          onEditingChange={(editing) => {
+            if (!editing) setAdding(false);
+          }}
+          onEdit={() => {}}
+        >
+          {null}
+        </Ficha>
+      );
     const s = card.series;
     if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} count={s.missing.length} actions={sortBtn} onEdit={() => setEditId(s.id)} editContent={<InlineEdit series={s} onClose={() => setEditId(null)} onUpdate={(patch) => updateSeries(s.id, patch)} onAppearance={(appearance) => updateSeries(s.id, { appearance })} onDelete={() => { if (confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((x) => x.id !== s.id) })); setEditId(null); } }} onEditingChange={(editing) => { if (!editing) setEditId(null); }} />}>
       {ord(Array.from({ length: s.total }, (_, k) => k + 1), (v) => !s.missing.includes(v)).map((v) => <HoldRow key={v} label={volumeLabel(s, v)} checked={!s.missing.includes(v)} onToggle={() => setData((d) => ({ ...d, series: d.series.map((x) => x.id === s.id ? { ...x, missing: toggleMissing(x.missing, v) } : x) }))} />)}
     </Ficha>;
     const items = data.items.filter((i) => !q.trim() || "avulsos".includes(q.trim().toLowerCase()) || i.title.toLowerCase().includes(q.trim().toLowerCase()));
-    return <Ficha title="Avulsos" category="Itens individuais" summary={`${data.items.filter((i) => !i.found).length} faltantes · ${data.items.filter((i) => i.found).length} na coleção`} appearance={data.looseAppearance} big={big} count={data.items.filter((i) => !i.found).length} actions={sortBtn} onEdit={() => setEditId(LOOSE_ID)}>
+    return <Ficha title="Avulsos" category="Itens individuais" summary={`${data.items.filter((i) => !i.found).length} faltantes · ${data.items.filter((i) => i.found).length} na coleção`} appearance={data.looseAppearance} big={big} count={data.items.filter((i) => !i.found).length} actions={sortBtn} onEdit={() => setEditId(LOOSE_ID)} editContent={<div className="flex min-h-full flex-col gap-4 pb-10" onPointerDown={(e) => e.stopPropagation()}><div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar Avulsos</h3><Button type="button" variant="ghost" size="sm" onClick={() => setEditId(null)}>Concluir</Button></div><AppearanceFields value={data.looseAppearance ?? DEFAULT_APPEARANCE} onChange={(looseAppearance) => setData((d) => ({ ...d, looseAppearance }))} /></div>}>
       {ord(items, (i) => !!i.found).map((i) => <HoldRow key={i.id} label={i.title} note={i.note || i.category} checked={!!i.found} onToggle={() => setData((d) => ({ ...d, items: d.items.map((x) => x.id === i.id ? { ...x, found: !x.found } : x) }))} />)}
       {items.length === 0 && <div className="py-8 text-center"><BookOpen className="mx-auto mb-3 size-6 opacity-40" /><p className="text-sm opacity-60">Nenhum item avulso</p></div>}
       <form className="mt-3 flex items-center gap-2 px-3" onSubmit={(e) => { e.preventDefault(); const t = newItem.trim(); if (!t) return; setData((d) => ({ ...d, items: [...d.items, { id: uid(), title: t, category: "Livro" as Category }] })); setNewItem(""); }}><Plus className="size-4 shrink-0 opacity-60" /><input aria-label="Novo item avulso" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Adicionar item…" className="min-w-0 flex-1 border-b border-current/25 bg-transparent py-2 text-sm outline-none placeholder:text-current/40 focus:border-current" /></form>
@@ -61,12 +117,12 @@ export default function Index() {
           <Button variant="ghost" size="icon" title="Lista contínua" aria-label="Lista contínua" aria-pressed={mode === "list"} className={mode === "list" ? "bg-secondary" : ""} onClick={() => setMode("list")}><List /></Button>
           <span className="mx-1 h-5 border-l border-border" />
           <Button variant="ghost" size="icon" title="Índice" aria-label="Índice" onClick={() => setIndexOpen(true)}><BookOpen /></Button>
-          <Button variant="outline" size="sm" className="ml-1" onClick={() => setAdding(true)} aria-label="Nova ficha"><Plus /> <span className="hidden sm:inline">Nova ficha</span></Button>
+          <Button variant="outline" size="sm" className="ml-1" onClick={startAdding} aria-label="Nova ficha"><Plus /> <span className="hidden sm:inline">Nova ficha</span></Button>
         </div>
       </div>
       <div className="mt-5 flex items-center justify-between border-b border-border pb-4 text-xs text-muted-foreground"><span>{String(allCards.length).padStart(2, "0")} fichas · {data.series.reduce((n, s) => n + s.missing.length, 0) + data.items.filter((i) => !i.found).length} faltantes</span>{mode === "stack" && cards.length > 1 && <span className="flex items-center gap-1"><Button variant="ghost" size="icon" className="size-7" aria-label="Ficha anterior" onClick={() => setNavigation({ direction: -1, token: navigation.token + 1 })}><ChevronLeft /></Button><Button variant="ghost" size="icon" className="size-7" aria-label="Próxima ficha" onClick={() => setNavigation({ direction: 1, token: navigation.token + 1 })}><ChevronRight /></Button></span>}</div>
     </header>
-    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} navigation={navigation} render={(card) => render(card, true)} disabled={adding} /> : <div className="scrollbar-none mx-auto min-h-0 w-full max-w-md flex-1 space-y-6 overflow-y-auto">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
+    {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} navigation={navigation} render={(card) => render(card, true)} /> : <div className="scrollbar-none mx-auto min-h-0 w-full max-w-md flex-1 space-y-6 overflow-y-auto">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
     <Sheet open={indexOpen} onOpenChange={setIndexOpen}><SheetContent side="left" className="sheet-surface flex w-80 flex-col px-5"><SheetHeader className="px-0"><SheetTitle>Índice</SheetTitle></SheetHeader><Input aria-label="Pular para ficha" value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." /><div className="flex-1 overflow-y-auto">{allCards.filter((c) => matches(c, indexQ.trim().toLowerCase())).map((c) => <Button key={c.id} variant="ghost" className="h-auto w-full justify-between rounded-none border-b py-4 whitespace-normal text-left" onClick={() => jump(c.id)}><span className="min-w-0 break-words">{c.series?.title ?? "Avulsos"}</span><ArrowUpRight className="shrink-0" /></Button>)}</div></SheetContent></Sheet>
 
   </main>;
@@ -75,30 +131,37 @@ export default function Index() {
 const papers: { id: PaperColor; name: string }[] = [{ id: "white", name: "Branco" }, { id: "craft", name: "Craft" }, { id: "sepia", name: "Sépia" }, { id: "rose", name: "Rosa" }, { id: "sage", name: "Verde" }, { id: "blue", name: "Azul" }];
 const inks: { id: InkColor; name: string }[] = [{ id: "graphite", name: "Grafite" }, { id: "blue", name: "Azul" }, { id: "red", name: "Vermelho" }, { id: "light", name: "Branco" }];
 function AppearanceFields({ value, onChange }: { value: Appearance; onChange: (a: Appearance) => void }) {
-  return <div className="space-y-4"><fieldset><legend className="mb-2 text-sm">Cor do papel</legend><div className="flex flex-wrap gap-2">{papers.map((p) => <Button type="button" key={p.id} variant="outline" size="icon" data-paper={p.id} aria-label={`Papel ${p.name}`} title={p.name} aria-pressed={value.paper === p.id} className={`size-8 rounded-full bg-paper hover:bg-paper ${value.paper === p.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, paper: p.id })} />)}</div></fieldset><fieldset><legend className="mb-2 text-sm">Cor do texto</legend><div className="flex gap-2">{inks.map((i) => <Button type="button" key={i.id} data-ink={i.id} variant="outline" size="icon" aria-label={`Texto ${i.name}`} title={i.name} aria-pressed={value.ink === i.id} className={`size-8 rounded-full bg-paper-ink hover:bg-paper-ink ${value.ink === i.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, ink: i.id })} />)}</div></fieldset></div>;
+  return <div className="space-y-4"><fieldset><legend className="mb-2 text-sm font-medium">Cor do papel</legend><div className="flex flex-wrap gap-2">{papers.map((p) => <Button type="button" key={p.id} variant="outline" size="icon" data-paper={p.id} aria-label={`Papel ${p.name}`} title={p.name} aria-pressed={value.paper === p.id} className={`size-8 rounded-full bg-paper hover:bg-paper ${value.paper === p.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, paper: p.id })} />)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-medium">Cor do texto</legend><div className="flex gap-2">{inks.map((i) => <Button type="button" key={i.id} data-ink={i.id} variant="outline" size="icon" aria-label={`Texto ${i.name}`} title={i.name} aria-pressed={value.ink === i.id} className={`size-8 rounded-full bg-paper-ink hover:bg-paper-ink ${value.ink === i.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, ink: i.id })} />)}</div></fieldset></div>;
 }
 function NomenclatureField({ value, onChange }: { value: Nomenclature; onChange: (v: Nomenclature) => void }) {
   return <div className="space-y-2"><Label>Nomenclatura</Label><Select value={value} onValueChange={(v) => onChange(v as Nomenclature)}><SelectTrigger aria-label="Nomenclatura"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Volume">Volume</SelectItem><SelectItem value="Edição">Edição</SelectItem></SelectContent></Select></div>;
 }
-function InlineCreate({ onCancel, onCreate }: { onCancel: () => void; onCreate: (title: string, category: Category, total: number, nomenclature: Nomenclature, appearance: Appearance) => void }) {
+function InlineCreate({ onCancel, onCreate, appearance = DEFAULT_APPEARANCE, onAppearanceChange }: { onCancel: () => void; onCreate: (title: string, category: Category, total: number, nomenclature: Nomenclature, appearance: Appearance) => void; appearance?: Appearance; onAppearanceChange?: (a: Appearance) => void }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("Mangá");
   const [total, setTotal] = useState("1");
   const [nomenclature, setNomenclature] = useState<Nomenclature>("Volume");
-  const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
-  return <form className="flex min-h-full flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (title.trim()) onCreate(title.trim(), category, Math.max(1, Number(total) || 1), nomenclature, appearance); }}>
-    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Nova ficha</h3><Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button></div>
+  const [localAppearance, setLocalAppearance] = useState<Appearance>(appearance);
+
+  const activeAppearance = appearance ?? localAppearance;
+  const handleAppearanceChange = (next: Appearance) => {
+    setLocalAppearance(next);
+    onAppearanceChange?.(next);
+  };
+
+  return <form className="flex min-h-full flex-col gap-4 pb-10" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }} onSubmit={(e) => { e.preventDefault(); if (title.trim()) onCreate(title.trim(), category, Math.max(1, Number(total) || 1), nomenclature, activeAppearance); }}>
+    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Nova ficha</h3><Button type="button" variant="ghost" size="sm" onClick={onCancel} aria-label="Cancelar criação">Cancelar</Button></div>
     <div className="space-y-2"><Label htmlFor="create-title">Título</Label><Input id="create-title" autoFocus required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Dragon Ball" /></div>
-    <div className="space-y-2"><Label>Categoria</Label><Select value={category} onValueChange={(v) => setCategory(v as Category)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+    <div className="space-y-2"><Label>Categoria</Label><Select value={category} onValueChange={(v) => { const nextCat = v as Category; setCategory(nextCat); setNomenclature(nextCat === "HQ" || nextCat === "Revista" ? "Edição" : "Volume"); }}><SelectTrigger aria-label="Categoria"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
     <NomenclatureField value={nomenclature} onChange={setNomenclature} />
-    <div className="space-y-2"><Label htmlFor="create-total">Total</Label><Input id="create-total" type="number" min={1} value={total} onChange={(e) => setTotal(e.target.value)} /></div>
-    <AppearanceFields value={appearance} onChange={setAppearance} />
+    <div className="space-y-2"><Label htmlFor="create-total">Total de {nomenclature === "Edição" ? "edições" : "volumes"}</Label><Input id="create-total" type="number" min={1} step={1} required value={total} onChange={(e) => setTotal(e.target.value)} /></div>
+    <AppearanceFields value={activeAppearance} onChange={handleAppearanceChange} />
     <Button type="submit" className="mt-auto"><Plus /> Criar ficha</Button>
   </form>;
 }
 function InlineEdit({ series, onClose, onUpdate, onAppearance, onDelete, onEditingChange }:  { series: Series; onClose: () => void; onUpdate: (patch: Partial<Series>) => void; onAppearance: (a: Appearance) => void; onDelete: () => void; onEditingChange?: (editing: boolean) => void }) {
   const appearance = series.appearance ?? DEFAULT_APPEARANCE;
-  return <div className="flex min-h-full flex-col gap-4">
+  return <div className="flex min-h-full flex-col gap-4 pb-10" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { onEditingChange?.(false); onClose(); } }}>
     <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar ficha</h3><Button type="button" variant="ghost" size="sm" onClick={() => { onEditingChange?.(false); onClose(); }}>Concluir</Button></div>
     <div className="space-y-2"><Label htmlFor="inline-title">Título</Label><Input id="inline-title" defaultValue={series.title} onBlur={(e) => { if (e.target.value.trim()) onUpdate({ title: e.target.value.trim() }); }} /></div>
     <NomenclatureField value={series.nomenclature ?? "Volume"} onChange={(nomenclature) => onUpdate({ nomenclature })} />

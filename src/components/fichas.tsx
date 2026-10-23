@@ -308,18 +308,33 @@ export function Ficha({
     return (
       <div data-paper={appearance.paper} data-ink={appearance.ink}>
         <Fillet corner="br" className={face}>
-          <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="text-xs uppercase opacity-60">{category}</span>
-              {gear}
+          {editing && editContent ? (
+            <div className="relative min-h-0">
+              {isValidElement(editContent)
+                ? cloneElement(editContent as React.ReactElement<{ onEditingChange?: (value: boolean) => void }>, {
+                    onEditingChange: (value: boolean) => {
+                      setEditing(value);
+                      onEditingChange?.(value);
+                    },
+                  })
+                : editContent}
             </div>
-            <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs opacity-60">{summary}</p>
-              {actions}
-            </div>
-          </header>
-          <div className="relative min-h-0">{children}</div>
+          ) : (
+            <>
+              <header className="relative mb-4 shrink-0 border-b border-current/25 pb-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="text-xs uppercase opacity-60">{category}</span>
+                  {gear}
+                </div>
+                <h2 className="break-words font-display text-2xl font-medium">{title}</h2>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs opacity-60">{summary}</p>
+                  {actions}
+                </div>
+              </header>
+              <div className="relative min-h-0">{children}</div>
+            </>
+          )}
         </Fillet>
       </div>
     );
@@ -503,6 +518,13 @@ export function StackView<T extends { id: string }>({
         className="relative mx-auto mb-11 min-h-0 w-full max-w-md flex-1 touch-pan-y select-none overflow-visible"
         onPointerDown={(e) => {
           if (disabled || busy.current) return;
+          if (
+            (e.target as HTMLElement).closest(
+              "input, textarea, button, select, [role='combobox'], [role='option'], form, .hold-row"
+            )
+          ) {
+            return;
+          }
           start.current = {
             x: e.clientX,
             y: e.clientY,
