@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DEFAULT_APPEARANCE, HOLD_DURATION, type Appearance } from "@/lib/store";
@@ -209,6 +209,35 @@ function Fillet({
   );
 }
 
+export function HoldAction({
+  label,
+  onComplete,
+}: {
+  label: string;
+  onComplete: () => void;
+}) {
+  const [holding, setHolding] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    setHolding(false);
+  };
+  const begin = () => {
+    if (timer.current) return;
+    setHolding(true);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setHolding(false);
+      onComplete();
+    }, HOLD_DURATION);
+  };
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  return <Button type="button" variant="ghost" className={cn("hold-row relative min-h-10 justify-start overflow-hidden text-destructive", holding && "is-holding")} onPointerDown={(e) => { if (e.button === 0) begin(); }} onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel} onContextMenu={(e) => e.preventDefault()}>
+    <span className="hold-fill absolute inset-0 origin-left bg-current/10" /><span className="relative flex items-center gap-2"><Trash2 /> {label}</span>
+  </Button>;
+}
+
 export function Ficha({
   title,
   category,
@@ -218,6 +247,7 @@ export function Ficha({
   onEdit,
   editContent,
   startEditing,
+  onEditingChange,
   big,
   actions,
   count,
@@ -233,9 +263,11 @@ export function Ficha({
   count?: number;
   editContent?: ReactNode;
   startEditing?: boolean;
+  onEditingChange?: (editing: boolean) => void;
 }) {
   const [flipped, setFlipped] = useState(false);
   const [editing, setEditing] = useState(startEditing ?? false);
+  useEffect(() => setEditing(startEditing ?? false), [startEditing]);
   const frontBtnRef = useRef<HTMLButtonElement>(null);
   const backBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -263,6 +295,7 @@ export function Ficha({
       title="Editar ficha"
       onClick={() => {
         setEditing(true);
+        onEditingChange?.(true);
         onEdit();
       }}
     >

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Ficha, HoldRow, StackView } from "@/components/fichas";
+import { Ficha, HoldAction, HoldRow, StackView } from "@/components/fichas";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES, DEFAULT_APPEARANCE, type Appearance, type Category, type Data, type Series, type Nomenclature, type PaperColor, type InkColor, toggleMissing, uid, useData, volumeLabel } from "@/lib/store";
@@ -28,7 +28,7 @@ export default function Index() {
   const [indexQ, setIndexQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const allCards: Card[] = [...data.series.map((s) => ({ id: s.id, series: s })), { id: LOOSE_ID }];
+  const allCards: Card[] = [...(adding ? [{ id: NEW_ID, draft: true } as Card] : []), ...data.series.map((s) => ({ id: s.id, series: s })), { id: LOOSE_ID }];
   const matches = (card: Card, query: string) => card.series
     ? card.series.title.toLowerCase().includes(query)
     : "avulsos".includes(query) || data.items.some((i) => i.title.toLowerCase().includes(query));
@@ -40,8 +40,9 @@ export default function Index() {
   const sortBtn = <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-inherit hover:bg-current/10 hover:text-inherit" aria-label="Alterar ordenação" onClick={() => setSort(sort === "order" ? "missing" : "order")}><ArrowDownUp className="size-3.5" />{sort === "order" ? "Em ordem" : "Faltantes primeiro"}</Button>;
   const ord = <T,>(arr: T[], has: (x: T) => boolean) => sort === "missing" ? [...arr.filter((x) => !has(x)), ...arr.filter(has)] : arr;
   const render = (card: Card, big = false) => {
+    if (card.draft) return <Ficha title="Nova ficha" category="Criar" summary="Preencha os dados da nova coleção" appearance={DEFAULT_APPEARANCE} big={big} startEditing editContent={<InlineCreate onCancel={() => setAdding(false)} onCreate={(title, category, total, nomenclature, appearance) => { const id = uid(); setData((d) => ({ ...d, series: [{ id, title, category, total, missing: Array.from({ length: total }, (_, k) => k + 1), nomenclature, appearance }, ...d.series] })); setAdding(false); setIdx(0); }} />} onEditingChange={(editing) => { if (!editing) setAdding(false); }} onEdit={() => {}}>{null}</Ficha>;
     const s = card.series;
-    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} count={s.missing.length} actions={sortBtn} onEdit={() => setEditId(s.id)} editContent={<InlineEdit series={s} onClose={() => setEditId(null)} onUpdate={(patch) => updateSeries(s.id, patch)} onAppearance={(appearance) => updateSeries(s.id, { appearance })} onDelete={() => { if (confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((x) => x.id !== s.id) })); setEditId(null); } }} />}>
+    if (s) return <Ficha title={s.title} category={`${s.category} / ${s.nomenclature === "Edição" ? "edições" : "volumes"}`} summary={`${s.missing.length} faltantes · ${s.total - s.missing.length} na coleção · ${s.total} no total`} appearance={s.appearance} big={big} count={s.missing.length} actions={sortBtn} onEdit={() => setEditId(s.id)} editContent={<InlineEdit series={s} onClose={() => setEditId(null)} onUpdate={(patch) => updateSeries(s.id, patch)} onAppearance={(appearance) => updateSeries(s.id, { appearance })} onDelete={() => { if (confirm("Excluir esta série?")) { setData((d) => ({ ...d, series: d.series.filter((x) => x.id !== s.id) })); setEditId(null); } }} onEditingChange={(editing) => { if (!editing) setEditId(null); }} />}>
       {ord(Array.from({ length: s.total }, (_, k) => k + 1), (v) => !s.missing.includes(v)).map((v) => <HoldRow key={v} label={volumeLabel(s, v)} checked={!s.missing.includes(v)} onToggle={() => setData((d) => ({ ...d, series: d.series.map((x) => x.id === s.id ? { ...x, missing: toggleMissing(x.missing, v) } : x) }))} />)}
     </Ficha>;
     const items = data.items.filter((i) => !q.trim() || "avulsos".includes(q.trim().toLowerCase()) || i.title.toLowerCase().includes(q.trim().toLowerCase()));
@@ -67,17 +68,6 @@ export default function Index() {
     </header>
     {!loaded ? <p className="py-12 text-center text-sm text-muted-foreground">Abrindo fichário…</p> : cards.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada.</p> : mode === "stack" ? <StackView cards={cards} index={current} setIndex={setIdx} navigation={navigation} render={(card) => render(card, true)} /> : <div className="scrollbar-none mx-auto min-h-0 w-full max-w-md flex-1 space-y-6 overflow-y-auto">{cards.map((card) => <div key={card.id}>{render(card)}</div>)}</div>}
     <Sheet open={indexOpen} onOpenChange={setIndexOpen}><SheetContent side="left" className="sheet-surface flex w-80 flex-col px-5"><SheetHeader className="px-0"><SheetTitle>Índice</SheetTitle></SheetHeader><Input aria-label="Pular para ficha" value={indexQ} onChange={(e) => setIndexQ(e.target.value)} placeholder="Pular para..." /><div className="flex-1 overflow-y-auto">{allCards.filter((c) => matches(c, indexQ.trim().toLowerCase())).map((c) => <Button key={c.id} variant="ghost" className="h-auto w-full justify-between rounded-none border-b py-4 whitespace-normal text-left" onClick={() => jump(c.id)}><span className="min-w-0 break-words">{c.series?.title ?? "Avulsos"}</span><ArrowUpRight className="shrink-0" /></Button>)}</div></SheetContent></Sheet>
-    <AddDialog open={adding} onOpenChange={setAdding} onAdd={(kind, title, category, extra, nomenclature, appearance) => {
-      if (kind === "series") {
-        const total = Math.max(1, Math.floor(Number(extra) || 1));
-        const id = uid();
-        setData((d) => ({ ...d, series: [{ id, title, category, total, missing: Array.from({ length: total }, (_, k) => k + 1), nomenclature, appearance }, ...d.series] }));
-        setIdx(0);
-      } else {
-        setData((d) => ({ ...d, items: [...d.items, { id: uid(), title, category, note: extra || undefined }] }));
-        setIdx(data.series.length);
-      }
-    }} />
 
   </main>;
 }
@@ -90,15 +80,31 @@ function AppearanceFields({ value, onChange }: { value: Appearance; onChange: (a
 function NomenclatureField({ value, onChange }: { value: Nomenclature; onChange: (v: Nomenclature) => void }) {
   return <div className="space-y-2"><Label>Nomenclatura</Label><Select value={value} onValueChange={(v) => onChange(v as Nomenclature)}><SelectTrigger aria-label="Nomenclatura"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Volume">Volume</SelectItem><SelectItem value="Edição">Edição</SelectItem></SelectContent></Select></div>;
 }
-function InlineEdit({ series, onClose, onUpdate, onAppearance, onDelete }: { series: Series; onClose: () => void; onUpdate: (patch: Partial<Series>) => void; onAppearance: (a: Appearance) => void; onDelete: () => void }) {
+function InlineCreate({ onCancel, onCreate }: { onCancel: () => void; onCreate: (title: string, category: Category, total: number, nomenclature: Nomenclature, appearance: Appearance) => void }) {
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<Category>("Mangá");
+  const [total, setTotal] = useState("1");
+  const [nomenclature, setNomenclature] = useState<Nomenclature>("Volume");
+  const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
+  return <form className="flex min-h-full flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (title.trim()) onCreate(title.trim(), category, Math.max(1, Number(total) || 1), nomenclature, appearance); }}>
+    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Nova ficha</h3><Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button></div>
+    <div className="space-y-2"><Label htmlFor="create-title">Título</Label><Input id="create-title" autoFocus required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Dragon Ball" /></div>
+    <div className="space-y-2"><Label>Categoria</Label><Select value={category} onValueChange={(v) => setCategory(v as Category)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+    <NomenclatureField value={nomenclature} onChange={setNomenclature} />
+    <div className="space-y-2"><Label htmlFor="create-total">Total</Label><Input id="create-total" type="number" min={1} value={total} onChange={(e) => setTotal(e.target.value)} /></div>
+    <AppearanceFields value={appearance} onChange={setAppearance} />
+    <Button type="submit" className="mt-auto"><Plus /> Criar ficha</Button>
+  </form>;
+}
+function InlineEdit({ series, onClose, onUpdate, onAppearance, onDelete, onEditingChange }:  { series: Series; onClose: () => void; onUpdate: (patch: Partial<Series>) => void; onAppearance: (a: Appearance) => void; onDelete: () => void; onEditingChange?: (editing: boolean) => void }) {
   const appearance = series.appearance ?? DEFAULT_APPEARANCE;
   return <div className="flex min-h-full flex-col gap-4">
-    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar ficha</h3><Button type="button" variant="ghost" size="sm" onClick={onClose}>Concluir</Button></div>
+    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar ficha</h3><Button type="button" variant="ghost" size="sm" onClick={() => { onEditingChange?.(false); onClose(); }}>Concluir</Button></div>
     <div className="space-y-2"><Label htmlFor="inline-title">Título</Label><Input id="inline-title" defaultValue={series.title} onBlur={(e) => { if (e.target.value.trim()) onUpdate({ title: e.target.value.trim() }); }} /></div>
     <NomenclatureField value={series.nomenclature ?? "Volume"} onChange={(nomenclature) => onUpdate({ nomenclature })} />
     <div className="space-y-2"><Label htmlFor="inline-total">Total de {series.nomenclature === "Edição" ? "edições" : "volumes"}</Label><Input id="inline-total" type="number" min={1} step={1} defaultValue={series.total} onBlur={(e) => { const total = Math.max(1, Math.floor(Number(e.target.value) || series.total)); onUpdate({ total, missing: [...series.missing.filter((v) => v <= total), ...Array.from({ length: Math.max(0, total - series.total) }, (_, k) => series.total + k + 1)] }); }} /></div>
     <AppearanceFields value={appearance} onChange={onAppearance} />
-    <Button type="button" variant="ghost" className="mt-auto justify-start text-destructive" onClick={onDelete}><Trash2 /> Excluir ficha</Button>
+    <HoldAction label="Excluir ficha" onComplete={onDelete} />
   </div>;
 }
 function AddDialog({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (kind: "series" | "item", title: string, category: Category, extra: string, nomenclature: Nomenclature, appearance: Appearance) => void }) {
