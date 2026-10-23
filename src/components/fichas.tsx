@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -362,8 +362,15 @@ export function Ficha({
               </Button>
             </div>
             {editing && editContent && (
-              <div className="absolute inset-0 z-10 overflow-y-auto bg-paper p-5 text-paper-ink sm:p-7">
-                {editContent}
+              <div className="ficha absolute inset-0 z-10 overflow-y-auto bg-paper p-5 text-paper-ink sm:p-7">
+                {isValidElement(editContent)
+                  ? cloneElement(editContent as React.ReactElement<{ onEditingChange?: (value: boolean) => void }>, {
+                      onEditingChange: (value: boolean) => {
+                        setEditing(value);
+                        onEditingChange?.(value);
+                      },
+                    })
+                  : editContent}
               </div>
             )}
           </Fillet>
@@ -405,12 +412,14 @@ export function StackView<T extends { id: string }>({
   setIndex,
   render,
   navigation,
+  disabled = false,
 }: {
   cards: T[];
   index: number;
   setIndex: (n: number) => void;
   render: (c: T) => ReactNode;
   navigation?: { direction: number; token: number };
+  disabled?: boolean;
 }) {
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -427,7 +436,7 @@ export function StackView<T extends { id: string }>({
   const width = () => (typeof window === "undefined" ? 400 : Math.min(window.innerWidth, 448));
 
   const go = (d: number, dir?: number) => {
-    if (n < 2 || busy.current) return;
+    if (disabled || n < 2 || busy.current) return;
     busy.current = true;
     const from = cards[index]!;
     const nextIndex = (index + d + n) % n;
@@ -460,7 +469,7 @@ export function StackView<T extends { id: string }>({
 
   useEffect(() => {
     if (navigation && navigation.token > 0) {
-      go(navigation.direction);
+      if (!disabled) go(navigation.direction);
     }
   }, [navigation?.token]);
 
@@ -493,7 +502,7 @@ export function StackView<T extends { id: string }>({
       <div
         className="relative mx-auto mb-11 min-h-0 w-full max-w-md flex-1 touch-pan-y select-none overflow-visible"
         onPointerDown={(e) => {
-          if (busy.current) return;
+          if (disabled || busy.current) return;
           start.current = {
             x: e.clientX,
             y: e.clientY,
