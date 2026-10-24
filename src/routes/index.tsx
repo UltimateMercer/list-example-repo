@@ -164,9 +164,14 @@ function InlineCreate({ onCancel, onCreate, appearance = DEFAULT_APPEARANCE, onA
     <Button type="submit" className="mt-auto"><Plus /> Criar ficha</Button>
   </form>;
 }
-function InlineLooseEdit({ appearance, onAppearance, onClose }: { appearance: Appearance; onAppearance: (a: Appearance) => void; onClose: () => void }) {
-  return <div className="scrollbar-none flex min-h-full flex-col gap-4 overflow-y-auto pb-10" onPointerDown={(e) => e.stopPropagation()}>
-    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar Avulsos</h3><Button type="button" variant="ghost" size="sm" onClick={onClose}>Concluir</Button></div>
+function InlineLooseEdit({ appearance, onAppearance, onClose, onEditingChange }: { appearance: Appearance; onAppearance: (a: Appearance) => void; onClose: () => void; onEditingChange?: (editing: boolean) => void }) {
+  const finish = () => {
+    onEditingChange?.(false);
+    onClose();
+  };
+
+  return <div className="scrollbar-none flex min-h-full flex-col gap-4 overflow-y-auto pb-10" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") finish(); }}>
+    <div className="flex items-center justify-between border-b border-current/20 pb-3"><h3 className="font-display text-xl">Editar Avulsos</h3><Button type="button" variant="ghost" size="sm" onClick={finish}>Concluir</Button></div>
     <AppearanceFields value={appearance} onChange={onAppearance} />
   </div>;
 }
