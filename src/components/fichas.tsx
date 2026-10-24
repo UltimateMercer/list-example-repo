@@ -379,7 +379,7 @@ export function Ficha({
               </Button>
             </div>
             {editing && editContent && (
-              <div className="ficha absolute inset-0 z-10 overflow-y-auto bg-paper p-5 text-paper-ink sm:p-7">
+              <div className="ficha ficha-form scrollbar-none absolute inset-0 z-10 overflow-y-auto bg-paper p-5 text-paper-ink sm:p-7">
                 {isValidElement(editContent)
                   ? cloneElement(editContent as React.ReactElement<{ onEditingChange?: (value: boolean) => void }>, {
                       onEditingChange: (value: boolean) => {
