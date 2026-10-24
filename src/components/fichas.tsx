@@ -1,8 +1,8 @@
-import { cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DEFAULT_APPEARANCE, HOLD_DURATION, type Appearance } from "@/lib/store";
+import { DEFAULT_APPEARANCE, HOLD_DURATION, normalizeAppearance, type Appearance } from "@/lib/store";
 
 export function HoldRow({
   label,
@@ -302,11 +302,13 @@ export function Ficha({
       <Settings2 />
     </Button>
   );
+  const resolvedAppearance = normalizeAppearance(appearance);
+  const paperStyle = { "--paper": resolvedAppearance.paper } as CSSProperties;
   const face = "ficha relative flex h-full flex-col overflow-hidden bg-paper p-5 text-paper-ink sm:p-7";
 
   if (!big) {
     return (
-      <div data-paper={appearance.paper} data-ink={appearance.ink}>
+      <div style={paperStyle} data-paper={resolvedAppearance.paper} data-ink={resolvedAppearance.ink}>
         <Fillet corner="br" className={face}>
           {editing && editContent ? (
             <div className="relative min-h-0">
@@ -341,7 +343,7 @@ export function Ficha({
   }
 
   return (
-    <div data-paper={appearance.paper} data-ink={appearance.ink} className="flip-scene h-full w-full">
+    <div style={paperStyle} data-paper={resolvedAppearance.paper} data-ink={resolvedAppearance.ink} className="flip-scene h-full w-full">
       <div className={cn("flip-inner relative h-full w-full", flipped && "flipped")}>
         <div
           className="flip-face absolute inset-0 rounded-2xl"

@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Ficha, HoldAction, HoldRow, StackView } from "@/components/fichas";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CATEGORIES, DEFAULT_APPEARANCE, type Appearance, type Category, type Data, type Series, type Nomenclature, type PaperColor, type InkColor, toggleMissing, uid, useData, volumeLabel } from "@/lib/store";
+import { CATEGORIES, DEFAULT_APPEARANCE, getContrastInk, normalizeAppearance, type Appearance, type Category, type Data, type Series, type Nomenclature, toggleMissing, uid, useData, volumeLabel } from "@/lib/store";
 
 
 type Card = { id: string; series?: Series; draft?: boolean };
@@ -48,7 +48,11 @@ export default function Index() {
   };
   const cards = allCards.filter((card) => matches(card, q.trim().toLowerCase()));
   const current = Math.min(idx, Math.max(0, cards.length - 1));
-  const updateSeries = (id: string, patch: Partial<Series>) => setData((d) => ({ ...d, series: d.series.map((s) => s.id === id ? { ...s, ...patch } : s) }));
+  const updateSeries = (id: string, patch: Partial<Series>) => setData((d) => ({ ...d, series: d.series.map((s) => {
+    if (s.id !== id) return s;
+    const next = { ...s, ...patch };
+    return patch.appearance ? { ...next, appearance: normalizeAppearance(patch.appearance) } : next;
+  }) }));
   const jump = (id: string) => { setMode("stack"); setIdx(allCards.findIndex((c) => c.id === id)); setIndexOpen(false); };
   const sortBtn = <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-inherit hover:bg-current/10 hover:text-inherit" aria-label="Alterar ordenação" onClick={() => setSort(sort === "order" ? "missing" : "order")}><ArrowDownUp className="size-3.5" />{sort === "order" ? "Em ordem" : "Faltantes primeiro"}</Button>;
   const ord = <T,>(arr: T[], has: (x: T) => boolean) => sort === "missing" ? [...arr.filter((x) => !has(x)), ...arr.filter(has)] : arr;
@@ -128,10 +132,11 @@ export default function Index() {
   </main>;
 }
 
-const papers: { id: PaperColor; name: string }[] = [{ id: "white", name: "Branco" }, { id: "craft", name: "Craft" }, { id: "sepia", name: "Sépia" }, { id: "rose", name: "Rosa" }, { id: "sage", name: "Verde" }, { id: "blue", name: "Azul" }];
-const inks: { id: InkColor; name: string }[] = [{ id: "graphite", name: "Grafite" }, { id: "blue", name: "Azul" }, { id: "red", name: "Vermelho" }, { id: "light", name: "Branco" }];
+const papers = [{ id: "#fffdf7", name: "Branco" }, { id: "#d7bc8b", name: "Craft" }, { id: "#a98968", name: "Sépia" }, { id: "#ead1d0", name: "Rosa" }, { id: "#c9d9c4", name: "Verde" }, { id: "#c9d9e8", name: "Azul" }];
 function AppearanceFields({ value, onChange }: { value: Appearance; onChange: (a: Appearance) => void }) {
-  return <div className="space-y-4"><fieldset><legend className="mb-2 text-sm font-medium">Cor do papel</legend><div className="flex flex-wrap gap-2">{papers.map((p) => <Button type="button" key={p.id} variant="outline" size="icon" data-paper={p.id} aria-label={`Papel ${p.name}`} title={p.name} aria-pressed={value.paper === p.id} className={`size-8 rounded-full bg-paper hover:bg-paper ${value.paper === p.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, paper: p.id })} />)}</div></fieldset><fieldset><legend className="mb-2 text-sm font-medium">Cor do texto</legend><div className="flex gap-2">{inks.map((i) => <Button type="button" key={i.id} data-ink={i.id} variant="outline" size="icon" aria-label={`Texto ${i.name}`} title={i.name} aria-pressed={value.ink === i.id} className={`size-8 rounded-full bg-paper-ink hover:bg-paper-ink ${value.ink === i.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} onClick={() => onChange({ ...value, ink: i.id })} />)}</div></fieldset></div>;
+  const appearance = normalizeAppearance(value);
+  const setPaper = (paper: string) => onChange({ paper, ink: getContrastInk(paper) });
+  return <div className="space-y-4"><fieldset><legend className="mb-2 text-sm font-medium">Cor do papel</legend><div className="flex flex-wrap items-center gap-2">{papers.map((p) => <Button type="button" key={p.id} variant="outline" size="icon" aria-label={`Papel ${p.name}`} title={p.name} aria-pressed={appearance.paper === p.id} className={`size-8 rounded-full bg-transparent p-0 ${appearance.paper === p.id ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`} style={{ backgroundColor: p.id }} onClick={() => setPaper(p.id)} />)}<label className="relative size-8 cursor-pointer overflow-hidden rounded-full border border-border" title="Escolher cor personalizada"><span className="sr-only">Escolher cor personalizada</span><input type="color" value={appearance.paper} onChange={(e) => setPaper(e.target.value)} className="absolute inset-[-8px] size-12 cursor-pointer" /></label></div></fieldset><p className="text-xs text-muted-foreground">A cor do texto é definida automaticamente para manter o contraste.</p></div>;
 }
 function NomenclatureField({ value, onChange }: { value: Nomenclature; onChange: (v: Nomenclature) => void }) {
   return <div className="space-y-2"><Label>Nomenclatura</Label><Select value={value} onValueChange={(v) => onChange(v as Nomenclature)}><SelectTrigger aria-label="Nomenclatura"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Volume">Volume</SelectItem><SelectItem value="Edição">Edição</SelectItem></SelectContent></Select></div>;
